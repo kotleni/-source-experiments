@@ -1,0 +1,39 @@
+// create the puppetInfoNode
+string $creatureInfo = "AP_arm" ;
+createNode transform -n  $creatureInfo ;
+
+// create clavicle_L
+createNode transform -n clavicle_L;
+xform -t  0.2 8.802526442 1 |clavicle_L;
+addAttr -ln clavicle_L -at "message" $creatureInfo ;
+connectAttr -f |clavicle_L.message ( $creatureInfo + "." + "clavicle_L");
+setAttr |clavicle_L.displayHandle 1;
+brAssign_LR_layer |clavicle_L L;
+brHideAttrsv |clavicle_L ;
+
+// create shoulder_L
+createNode transform -n shoulder_L;
+xform -t  2.922473055 9.205804749 0.1714850337 |shoulder_L;
+addAttr -ln shoulder_L -at "message" $creatureInfo ;
+connectAttr -f |shoulder_L.message ( $creatureInfo + "." + "shoulder_L");
+setAttr |shoulder_L.displayHandle 1;
+brAssign_LR_layer |shoulder_L L;
+brHideAttrsv |shoulder_L ;
+
+// create elbow_L
+createNode transform -n elbow_L;
+xform -t  4.756144353 5.413900608 -1.11842471 |elbow_L;
+addAttr -ln elbow_L -at "message" $creatureInfo ;
+connectAttr -f |elbow_L.message ( $creatureInfo + "." + "elbow_L");
+setAttr |elbow_L.displayHandle 1;
+brAssign_LR_layer |elbow_L L;
+brHideAttrsv elbow_L ;
+
+// create wrist_L
+createNode transform -n wrist_L;
+xform -t  5.996448514 0.8359936846 0 |wrist_L;
+addAttr -ln wrist_L -at "message" $creatureInfo ;
+connectAttr -f |wrist_L.message ( $creatureInfo + "." + "wrist_L");
+setAttr |wrist_L.displayHandle 1;
+brAssign_LR_layer |wrist_L L;
+brHideAttrsv |wrist_L ;

@@ -1,0 +1,37 @@
+// clear out scene
+//file -f -new;
+
+// get locators
+source "PUPPETDIR/locators.mel";
+
+// get the control nodes
+string $clavicle_L_cntrl  = `brAutoPuppetQuery -q clavicle_L`;
+string $shoulder_L_cntrl  = `brAutoPuppetQuery -q shoulder_L`;
+string $elbow_L_cntrl     = `brAutoPuppetQuery -q elbow_L`;
+string $wrist_L_cntrl     = `brAutoPuppetQuery -q wrist_L`;
+
+///////////////////////////////////////////
+// create the individual puppet objects
+///////////////////////////////////////////
+
+// create arms
+string $arm_L[] = `brCreatePuppetArm arm_L $clavicle_L_cntrl $shoulder_L_cntrl $elbow_L_cntrl $wrist_L_cntrl 4 1`;
+string $jArmRoot_L = $arm_L[0];
+string $jArmSternum_L = $arm_L[1];
+string $jAarmSternum_L = $arm_L[2];
+
+///////////////////////////////////////////
+// organize the locators
+///////////////////////////////////////////
+
+// hide locators that have become positioners
+hide $clavicle_L_cntrl $shoulder_L_cntrl;
+
+// get the AP_puppetInfo node
+string $buf[] = `ls "AP_*"`;
+string $puppetInfoNode = $buf[0];
+
+// print success
+print ":::::::::::::::::::::::::::::::::::::: \n";
+print "::: CREATURE rig successfully created \!\! \n";
+

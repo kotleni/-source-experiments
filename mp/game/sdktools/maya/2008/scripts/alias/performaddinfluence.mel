@@ -1,0 +1,436 @@
+// Copyright (C) 1997-2006 Autodesk, Inc., and/or its licensors.
+// All rights reserved.
+//
+// The coded instructions, statements, computer programs, and/or related
+// material (collectively the "Data") in these files contain unpublished
+// information proprietary to Autodesk, Inc. ("Autodesk") and/or its licensors,
+// which is protected by U.S. and Canadian federal copyright law and by
+// international treaties.
+//
+// The Data is provided for use exclusively by You. You have the right to use,
+// modify, and incorporate this Data into other products for purposes authorized
+// by the Autodesk software license agreement, without fee.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. AUTODESK
+// DOES NOT MAKE AND HEREBY DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTIES
+// INCLUDING, BUT NOT LIMITED TO, THE WARRANTIES OF NON-INFRINGEMENT,
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, OR ARISING FROM A COURSE
+// OF DEALING, USAGE, OR TRADE PRACTICE. IN NO EVENT WILL AUTODESK AND/OR ITS
+// LICENSORS BE LIABLE FOR ANY LOST REVENUES, DATA, OR PROFITS, OR SPECIAL,
+// DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES, EVEN IF AUTODESK AND/OR ITS
+// LICENSORS HAS BEEN ADVISED OF THE POSSIBILITY OR PROBABILITY OF SUCH DAMAGES.
+
+//
+//  Alias Script File
+//  MODIFY THIS AT YOUR OWN RISK
+//
+//  Creation Date:  Oct 12, 1998
+//
+//  Description:
+//      This script sets up the skinCluster Add Influence dialog box
+//
+//  Input Arguments:
+//      None.
+//
+//  Return Value:
+//      None.
+//
+
+proc setOptionVars (int $forceFactorySettings)
+{
+	// Use Geometry
+	//
+	if( $forceFactorySettings || !`optionVar -exists useGeometry` ) {
+		// default useGeometry of 1 means use the geometry of the
+		// bound object
+		//
+		optionVar -intValue useGeometry 1;
+	}
+
+	// Dropoff
+	//
+	if ( $forceFactorySettings || !`optionVar -exists dropoff` ) {
+		optionVar -floatValue dropoff 4.0;
+	}
+
+	// Smoothness
+	//
+	if ( $forceFactorySettings || !`optionVar -exists polySmoothness` ) {
+		optionVar -floatValue polySmoothness 0.0;
+	}
+
+	// Nurbs samples
+	if ( $forceFactorySettings || !`optionVar -exists nurbsSamples`) {
+		optionVar -intValue nurbsSamples 10;
+	}
+
+	// Lock weights
+	//
+	if ( $forceFactorySettings || !`optionVar -exists lockWeights`){
+		optionVar -intValue lockWeights 0;
+	}
+
+	// Default weight
+	//
+	if ( $forceFactorySettings || !`optionVar -exists defaultWeight`) {
+		optionVar -floatValue defaultWeight 0.0;
+	}
+
+}
+
+//
+//  Procedure Name:
+//      addInfluenceSetup
+//
+//  Description:
+//		Update the state of the option box UI to reflect the option values.
+//
+//  Input Arguments:
+//      parent               - Top level parent layout of the option box UI.
+//                             Required so that UI object names can be
+//                             successfully resolved.
+//
+//		forceFactorySettings - Whether the option values should be set to
+//                             default values.
+//
+//  Return Value:
+//      None.
+//
+global proc addInfluenceSetup (string $parent, int $forceFactorySettings)
+{
+	// Retrieve the option settings
+	//
+	setOptionVars( $forceFactorySettings );
+
+	setParent $parent;
+
+	// Query the optionVar's and set the values into the controls
+	//
+	int $useGeom = `optionVar -query useGeometry`;
+	checkBoxGrp -e -value1 $useGeom useGeometryWidget;
+
+	// Dropoff
+	//
+	if (`floatSliderGrp -exists dropoff`){
+		floatSliderGrp -edit
+			-value `optionVar -query dropoff`
+			dropoff;
+	}
+
+	// Poly smoothness
+	//
+	if (`floatSliderGrp -exists psWidget`){
+		floatSliderGrp -edit
+			-value `optionVar -query polySmoothness`
+			psWidget;
+		if ($useGeom)
+			floatSliderGrp -e -enable 1 psWidget;
+	}
+
+	// Nurbs samples
+	//
+	if (`intSliderGrp -exists nsWidget`) {
+		intSliderGrp -edit
+			-value `optionVar -query nurbsSamples`
+			nsWidget;
+		if ($useGeom)
+			intSliderGrp -e -enable 1 nsWidget;
+	}
+
+	// lock weights
+	//
+	int $lockWts = `optionVar -query lockWeights`;
+	checkBoxGrp -e -value1 $lockWts lockWeightsWidget;
+
+	// default weight
+	//
+	if (`floatSliderGrp -exists defaultWeightWidget`) {
+		floatSliderGrp -edit
+			-value `optionVar -query defaultWeight`
+			defaultWeightWidget;
+
+		floatSliderGrp -e -enable $lockWts defaultWeightWidget;
+	}
+
+
+
+}
+
+
+//
+//  Procedure Name:
+//      addInfluenceCallback
+//
+//  Description:
+//		Update the option values with the current state of the option box UI.
+//
+//  Input Arguments:
+//      parent - Top level parent layout of the option box UI.  Required so
+//               that UI object names can be successfully resolved.
+//
+//		doIt   - Whether the command should execute.
+//
+//  Return Value:
+//      None.
+//
+global proc addInfluenceCallback (string $parent, int $doIt)
+{
+    setParent $parent;
+
+	optionVar -intValue useGeometry `checkBoxGrp -q -value1 useGeometryWidget`;
+
+	// Dropoff
+	//
+	if (`floatSliderGrp -exists dropoff`) {
+		optionVar -floatValue dropoff
+			`floatSliderGrp -query -value dropoff`;
+	}
+
+	// Poly smoothness
+	//
+	if (`floatSliderGrp -exists psWidget`) {
+		optionVar -floatValue polySmoothness
+			`floatSliderGrp -query -value psWidget`;
+	}
+
+	// Nurbs samples
+	//
+	if (`intSliderGrp -exists nsWidget`) {
+		optionVar -intValue nurbsSamples
+			`intSliderGrp -query -value nsWidget`;
+	}
+
+	// lock weights
+	//
+	optionVar -intValue lockWeights `checkBoxGrp -q -value1 lockWeightsWidget`;
+
+	// default weight
+	//
+	if (`floatSliderGrp -exists defaultWeightWidget`) {
+		optionVar -floatValue defaultWeight
+			`floatSliderGrp -query -value defaultWeightWidget`;
+	}
+
+
+	if ($doIt) {
+		performAddInfluence false;
+		addToRecentCommandQueue "performAddInfluence false" "AddInfluence";
+	}
+}
+
+
+global proc addInfluenceOptions ()
+{
+	// Name of the command for this option box
+	//
+	string $commandName = "addInfluence";
+
+	// Build the option box "methods"
+	//
+	string $callback = ($commandName + "Callback");
+	string $setup = ($commandName + "Setup");
+
+	//	STEP 1:  Get the option box.
+	//	============================
+	//
+	//	The value returned is the name of the layout to be used as
+	//	the parent for the option box UI.
+	//
+	string $layout = getOptionBox();
+	setParent $layout;
+
+	//	STEP 2:  Pass the command name to the option box.
+	//	=================================================
+	//
+	//	Any default option box behaviour based on the command name is set
+	//	up with this call.  For example, updating the 'Help' menu item with
+	//	the name of the command.
+	//
+	setOptionBoxCommandName("skinCluster");
+
+	//	STEP 3:  Activate the default UI template.
+	//	==========================================
+	//
+	//	Activate the default UI template so that the layout of this
+	//	option box is consistent with the layout of the rest of the
+	//	application.
+	//
+	setUITemplate -pushTemplate DefaultTemplate;
+
+	//	STEP 4: Create option box contents.
+	//	===================================
+	//
+	//	This, of course, will vary from option box to option box.
+
+	//	Turn on the wait cursor.
+	//
+	waitCursor -state 1;
+
+	tabLayout -tabsVisible 0 -scrollable 1;
+
+	string $parent = `columnLayout -adjustableColumn 1`;
+
+	checkBoxGrp
+		-label (uiRes("m_performAddInfluence.kGeometry"))
+		-label1 (uiRes("m_performAddInfluence.kUseGeometry"))
+		-numberOfCheckBoxes 1
+ 		-on1 "floatSliderGrp -e -enable 1 psWidget; intSliderGrp -e -enable 1 nsWidget"
+ 		-of1 "floatSliderGrp -e -enable 0 psWidget; intSliderGrp -e -enable 0 nsWidget"
+		useGeometryWidget;
+
+	floatSliderGrp -label (uiRes("m_performAddInfluence.kDropoff"))  -minValue 0.1 -maxValue 10.0 -fieldMaxValue 100.0 -pre 1 dropoff ;
+
+	floatSliderGrp -label (uiRes("m_performAddInfluence.kPolygonSmoothness"))  -minValue 0.0 -maxValue 50.0 -enable (`checkBoxGrp -q -v1 useGeometryWidget`) -pre 1 psWidget;
+
+	intSliderGrp -label (uiRes("m_performAddInfluence.kNURBSSamples"))  -minValue 1 -maxValue 100 -enable (`checkBoxGrp -q -v1 useGeometryWidget`) nsWidget;
+
+	checkBoxGrp
+		-label (uiRes("m_performAddInfluence.kWeightLocking"))
+		-label1 (uiRes("m_performAddInfluence.kLockWeights"))
+		-numberOfCheckBoxes 1
+ 		-on1 "floatSliderGrp -e -enable 1 defaultWeightWidget"
+ 		-of1 "floatSliderGrp -e -enable 0 defaultWeightWidget"
+		lockWeightsWidget;
+
+	floatSliderGrp -label (uiRes("m_performAddInfluence.kDefaultWeight"))  -minValue 0.0 -maxValue 1.0 -enable (`checkBoxGrp -q -v1 lockWeightsWidget`) -pre 3 defaultWeightWidget;
+
+		//### BEGIN VALVE EDITS
+		checkBox -l "ignore bindpose" -align left -v(`optionVar -q ignoreBP`) -cc( "optionVar -iv ignoreBP #1;" ) ibpCheck;
+		//### END VALVE EDITS
+
+	//	Turn off the wait cursor.
+	//
+	waitCursor -state 0;
+
+	//	Step 5: Deactivate the default UI template.
+	//	===========================================
+	//
+	setUITemplate -popTemplate;
+
+	//	Step 6: Customize the buttons.
+	//	==============================
+	//
+	//	Provide more descriptive labels for the buttons.  This is not
+	//	necessary, but in some cases, for example, a button labelled
+	//	'Create' may be more meaningful to the user than one labelled
+	//	'Apply'.
+	//
+	//	Disable those buttons that are not applicable to the option box.
+	//
+	//	Attach actions to those buttons that are applicable to the option
+	//	box.  Note that the 'Close' button has a default action attached
+	//	to it that will hide the window.  If a a custom action is
+	//	attached to the 'Close' button then be sure to call the 'hide the
+	//	option box' procedure within the custom action so that the option
+	//	box is hidden properly.
+
+	//	'Apply' button.
+	//
+	string $applyBtn = getOptionBoxApplyBtn();
+	button -edit -label (uiRes("m_performAddInfluence.kAdd"))
+		-command ($callback + " " + $parent + " " + 1)
+		$applyBtn;
+
+	//	'Save' button.
+	//
+	string $saveBtn = getOptionBoxSaveBtn();
+	button -edit
+		-command ($callback + " " + $parent + " " + 0 + "; hideOptionBox")
+		$saveBtn;
+
+	//	'Reset' button.
+	//
+	string $resetBtn = getOptionBoxResetBtn();
+	button -edit
+		-command ($setup + " " + $parent + " " + 1)
+		$resetBtn;
+
+	//	Step 7: Set the option box title.
+	//	=================================
+	//
+	setOptionBoxTitle (uiRes("m_performAddInfluence.kAddInfluenceOptions"));
+
+	//	Step 8: Customize the 'Help' menu item text.
+	//	============================================
+	//
+	setOptionBoxHelpTag( "AddInfluence" );
+
+	//	Step 9: Set the current values of the option box.
+	//	=================================================
+	//
+	eval (($setup + " " + $parent + " " + 0));
+
+	//	Step 10: Show the option box.
+	//	=============================
+	//
+	showOptionBox();
+}
+
+proc string assembleCmd ()
+{
+	string $cmd;
+
+	setOptionVars( false );
+
+	$cmd = "skinClusterInfluence 1 \"";
+
+	int $useGeometry = `optionVar -q useGeometry`;
+	if ($useGeometry == 1)
+		$cmd = $cmd + "-ug";
+
+	$cmd += " -dr " + `optionVar -query dropoff`;
+
+	if ($useGeometry == 1)
+	{
+		$cmd += " -ps " + `optionVar -query polySmoothness`;
+		$cmd += " -ns " + `optionVar -query nurbsSamples`;
+	}
+
+	if( `optionVar -q ignoreBP` ) $cmd += " -ibp ";
+	int $lockWeights = `optionVar -q lockWeights`;
+	if ($lockWeights == 1)
+	{
+		$cmd = $cmd + " -lw true -wt " + `optionVar -query defaultWeight`;
+	}
+
+	$cmd += "\"";
+
+	return $cmd;
+}
+
+global proc string performAddInfluence (int $action)
+// The action variable means
+//		0 - do the command
+//		1 - show the option box
+//		2 - return the drag command
+//
+{
+	string $cmd = "";
+
+	switch ($action) {
+		case 0: // Execute the command
+			// Retrieve the option settings
+			//
+			setOptionVars (false);
+
+			// Get the command and print it in the command window
+			$cmd = `assembleCmd`;
+
+			// Execute the command with the option settings
+			evalEcho($cmd);
+
+			break;
+		case 1:  // Do the option box
+			addInfluenceOptions;
+			break;
+		case 2: // Return the drag string
+			// Retrieve the option settings
+			//
+			setOptionVars (false);
+
+			// Get the command
+			$cmd = `assembleCmd`;
+
+			break;
+	}
+	return $cmd;
+}

@@ -1,0 +1,102 @@
+zooSurgeonUtils;
+zooArrays_str;
+zooUtils;
+zooVisManUtils;
+
+
+global proc autoBuildVisSets() {
+//build the empty parent sets for parity visSets
+string $armsTL = `zooVisManCreateSet "" arms {}`;
+string $legsTL = `zooVisManCreateSet "" legs {}`;
+string $handsTL = `zooVisManCreateSet "" hands {}`;
+
+//do the arms
+string $lMatches[] = `ls -r 1 "bip_upperArm_L"`;
+string $rMatches[] = `ls -r 1 "bip_upperArm_R"`;
+string $lObjs[] = {};
+string $rObjs[] = {};
+string $armsLSet = "";
+string $armsRSet = "";
+
+if( `size $lMatches` ) {
+	$lObjs = `listRelatives -ad -type joint $lMatches`;
+	$lObjs = `zooAddArray_str $lMatches $lObjs`;
+	string $faces[] = `zooGetJointFaces $lObjs 0.2 {} {}`;
+	$armsLSet = `zooVisManCreateSet $armsTL left_arm $faces`;
+	}
+if( `size $rMatches` ) {
+	$rObjs = `listRelatives -ad -type joint $rMatches`;
+	$rObjs = `zooAddArray_str $rMatches $rObjs`;
+	string $faces[] = `zooGetJointFaces $rObjs 0.2 {} {}`;
+	$armsRSet = `zooVisManCreateSet $armsTL right_arm $faces`;
+	}
+
+//do the legs
+string $lMatches[] = `ls -r 1 "bip_hip_L"`;
+string $rMatches[] = `ls -r 1 "bip_hip_R"`;
+string $lObjs[] = {};
+string $rObjs[] = {};
+string $legsLSet = "";
+string $legsRSet = "";
+
+if( `size $lMatches` ) {
+	$lObjs = `listRelatives -ad -type joint $lMatches`;
+	$lObjs = `zooAddArray_str $lMatches $lObjs`;
+	string $faces[] = `zooGetJointFaces $lObjs 0.2 {} {}`;
+	$legsLSet = `zooVisManCreateSet $legsTL left_leg $faces`;
+	}
+if( `size $rMatches` ) {
+	$rObjs = `listRelatives -ad -type joint $rMatches`;
+	$rObjs = `zooAddArray_str $rMatches $rObjs`;
+	string $faces[] = `zooGetJointFaces $rObjs 0.2 {} {}`;
+	$legsRSet = `zooVisManCreateSet $legsTL right_leg $faces`;
+	}
+
+//do the hands
+string $lMatches[] = `ls -r 1 "bip_hand_L"`;
+string $rMatches[] = `ls -r 1 "bip_hand_R"`;
+string $lObjs[] = {};
+string $rObjs[] = {};
+string $handsLSet = "";
+string $handsRSet = "";
+
+if( `size $lMatches` ) {
+	$lObjs = `listRelatives -ad -type joint $lMatches`;
+	$lObjs = `zooAddArray_str $lMatches $lObjs`;
+	string $faces[] = `zooGetJointFaces $lObjs 0.2 {} {}`;
+	$handsLSet = `zooVisManCreateSet $handsTL left_hand $faces`;
+	}
+if( `size $rMatches` ) {
+	$legRObjs = `listRelatives -ad -type joint $rMatches`;
+	$legRObjs = `zooAddArray_str $rMatches $legRObjs`;
+	string $faces[] = `zooGetJointFaces $legRObjs 0.2 {} {}`;
+	$handsRSet = `zooVisManCreateSet $handsTL right_hand $faces`;
+	}
+
+//do the torso
+string $matches[] = `ls -r 1 {"bip_pelvis","bip_spine_0","bip_spine_1","bip_spine_2","bip_spine_3","bip_collar_L","bip_collar_R"}`;
+string $torsoSet = "";
+
+if( `size $matches` ) {
+	string $faces[] = `zooGetJointFaces $matches 0.2 {} {}`;
+	$torsoSet = `zooVisManCreateSet "" torso $faces`;
+	}
+
+//do the head
+string $matches[] = `ls -r 1 {"bip_neck","bip_head"}`;
+string $headSet = "";
+
+if( `size $matches` ) {
+	$objs = `listRelatives -ad -type joint $matches`;
+	$objs = `zooAddArray_str $matches $objs`;
+	string $faces[] = `zooGetJointFaces $objs 0.2 {} {}`;
+	$torsoSet = `zooVisManCreateSet "" head $faces`;
+	}
+
+//collapse the top level sets
+zooVisManSetCollapseState $armsTL 1;
+zooVisManSetCollapseState $legsTL 1;
+zooVisManSetCollapseState $handsTL 1;
+
+if( `window -ex zooVisManWin` ) zooVisManUIFunctions -populate;
+}

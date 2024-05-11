@@ -1,0 +1,124 @@
+global proc tfMakeEightWayVAF( string $filename )
+{
+	select -r Rig:lElbowControl Rig:rkneeControl Rig:lkneeControl Rig:rElbowControl Rig:rFootControl Rig:lFootControl Rig:UpperbodyControl Rig:PelvisControl;
+	print ( "// Exporting: "+ $filename + "... \n" );
+
+	//make the file
+	int $fileId = fopen (  $filename, "w"  ) ;
+
+	//get everything selected
+ 	string $selObjects[] = `ls -sl -et transform`;
+
+	// find start and end frames
+	// get the current time so we can return to this spot when done
+ 	int $current = `currentTime -q`;
+ 	int $start   = `playbackOptions -q -min`;
+ 	int $end     = `playbackOptions -q -max`;
+	currentTime -edit $current;
+
+	//the timeline string is for our keyframe command later
+	string $timeline = $start + ":" + $end;
+
+	string $user = `getenv ( "USER" )`;
+	string $vProject = `getenv ( "VPROJECT" )`;
+	string $fileName = `file -q -sn`;
+	string $date = `system ("date /T")`;
+	$date = `match "^[^(\n\r)]*" $date`;
+	string $version = `about -v`;
+	//write out the header
+	fprint ( $fileId, "//\tValve animation file\r\n" ) ;
+	fprint ( $fileId, "//\tCreated by:\t" + $user + "\r\n" ) ;
+	fprint ( $fileId, "//\tDate:\t" + $date + "\r\n" ) ;
+	fprint ( $fileId, "//\tMaya version:\t" + $version + "\r\n" ) ;
+	fprint ( $fileId, "//\tFilename:\t" + $fileName + "\r\n" ) ;
+	fprint ( $fileId, "//\tVProject:\t" + $vProject + "\r\n\r\n" ) ;
+
+	//write out the frame range
+	fprint (  $fileId, "Frames: " + $start + " " + $end + "\r\n"  +  "\r\n" ) ;
+
+	for  ( $object in $selObjects )
+ 	{
+		fprint( $fileId, "Object:\t" + $object + "\r\n" );
+		fprint( $fileId, "{\r\n" );
+
+		//get the keyable attributes
+		string $attributes[] = `listAttr -s -k -u $object`;
+		for( $attribute  in $attributes )
+		{
+			if (( `gmatch $object "Rig:UpperbodyControl"` ) && ( `gmatch $attribute "rotateX"`)) continue;
+			fprint( $fileId, "\tAttribute:\t" + $attribute + "\r\n" ) ;
+
+			// getting -timechange will return the frames the keyframes are on for that attr
+			float $keys[] = `keyframe -s 0 -time ":" -attribute $attribute -query -timeChange $object`;
+			string $attr = $object + "." + $attribute;
+
+			// store some defaults for the attributes of the key
+			float  $value[]            = {0};            // value of the key
+			int    $keylock[]          = {1};            // tangent is locked or unlocked
+			float  $inAngle[]          = {0};            // in tangent angle
+			float  $outAngle[]         = {0};            // out tangent angle
+			float  $inWeight[]         = {0};            // in tangent weight
+			float  $outWeight[]        = {0};            // out tangent weight
+			string $inTangentType[]    = {"spline"};     // in tangent type
+			string $outTangentType[]   = {"spline"};     // out tangent type
+			int    $weightedTangents[] = {0};            // boolean for weighted tangents
+			string $preInfinity[]      = {"constant"};   // pre infinity curve settings
+			string $postInfinity[]     = {"constant"};   // post infinity curve settings
+
+			// check for objects with no keys, and write out current values as frame 0
+			// store whether this object was unkeyed, for use in the loop
+			int $useCurrentValue = 0;
+			if ( !`size $keys` )
+			{
+				$keys[0] = 0;
+				clear $value;
+				$value[0] = `getAttr $attr`;
+				$useCurrentValue = 1;
+			}
+
+			// write out all the information for the key
+			for( $key in $keys )
+			{
+				if ( !$useCurrentValue )
+				{
+					$value            = `keyframe -time $key -attribute $attribute -query -valueChange $object`;
+					$keylock          = `keyTangent -t $key -q -lock $attr`;
+					$inAngle          = `keyTangent -t $key -q -inAngle $attr`;
+					$outAngle         = `keyTangent -t $key -q -outAngle $attr`;
+					$inWeight         = `keyTangent -t $key -q -inWeight $attr`;
+					$outWeight        = `keyTangent -t $key -q -outWeight $attr`;
+					$inTangentType    = `keyTangent -t $key -q -inTangentType $attr`;
+					$outTangentType   = `keyTangent -t $key -q -outTangentType $attr`;
+					$weightedTangents = `keyTangent -t $key -q -weightedTangents $attr`;
+					$preInfinity      = `setInfinity -q -pri $attr`;
+					$postInfinity     = `setInfinity -q -poi $attr`;
+				}
+
+				fprint( $fileId, "\t\tFrame:\t" + $key + "\r\n") ;
+				fprint( $fileId, "\t\t\tValue:\t"
+							+ $value[0] + "\t"
+							+ $keylock[0] + "\t"
+							+ $inAngle[0] + "\t"
+							+ $outAngle[0] + "\t"
+							+ $inWeight[0] + "\t"
+							+ $outWeight[0] + "\t"
+							+ $inTangentType[0] + "\t"
+							+ $outTangentType[0] + "\t"
+							+ $weightedTangents[0] + "\t"
+							+ $preInfinity[0] + "\t"
+							+ $postInfinity[0]
+							+ "\r\n" ) ;
+				$value[0] = 0;
+			}
+		}
+		fprint( $fileId, "}\r\n" );
+	}
+
+	//close the file and clean up the UI
+	fclose( $fileId );
+	select -r $selObjects;
+	
+	// only populate the animation list if the window is open, so the script will run in batch mode
+	if ( `window -exists animLibrary` ) populateAnimList;
+
+}

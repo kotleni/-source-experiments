@@ -1,0 +1,128 @@
+//
+// source "PUPPETDIR/build_human.mel";
+// 
+
+
+// source relevant scripts
+//source "C:/bin/mel/r004/autoPuppet/brLock.mel";
+//source "C:/bin/mel/r004/autoPuppet/brHideUnnecessary.mel";
+//source "C:/bin/mel/r004/autoPuppet/brCreatePuppetArm.mel";
+//source "C:/bin/mel/r004/autoPuppet/brCreatePuppetSpine.mel";
+//source "C:/bin/mel/r004/autoPuppet/brCreatePuppetTail.mel";
+//source "C:/bin/mel/r004/autoPuppet/brCreatePuppetLeg.mel";
+//source "C:/bin/mel/r004/autoPuppet/brCreatePuppetHead.mel";
+//source "C:/bin/mel/r004/autoPuppet/brCreatePuppetHead.mel";
+//source "C:/bin/mel/r004/autoPuppet/brAutoPuppetQuery.mel";
+
+// clear out scene
+//file -f -new;
+
+// get locators
+// file -import -type "mayaAscii" -rpr "locators" -options "v=0;p=17" "PUPPETDIR/locators.ma";
+
+// get locators
+source "PUPPETDIR/locators.mel";
+
+// get the control nodes
+string $head_cntrl        = `brAutoPuppetQuery -q head`;
+string $neck_cntrl        = `brAutoPuppetQuery -q neck`;
+string $chest_cntrl       = `brAutoPuppetQuery -q chest`;
+string $pelvis_cntrl      = `brAutoPuppetQuery -q pelvis`;
+string $clavical_R_cntrl  = `brAutoPuppetQuery -q clavical_R`;
+string $shoulder_R_cntrl  = `brAutoPuppetQuery -q shoulder_R`;
+string $elbow_R_cntrl     = `brAutoPuppetQuery -q elbow_R`;
+string $wrist_R_cntrl     = `brAutoPuppetQuery -q wrist_R`;
+string $clavical_L_cntrl  = `brAutoPuppetQuery -q clavical_L`;
+string $shoulder_L_cntrl  = `brAutoPuppetQuery -q shoulder_L`;
+string $elbow_L_cntrl     = `brAutoPuppetQuery -q elbow_L`;
+string $wrist_L_cntrl     = `brAutoPuppetQuery -q wrist_L`;
+string $tail_cntrl        = `brAutoPuppetQuery -q tail`;
+
+
+///////////////////////////////////////////
+// create the individual puppet objects
+///////////////////////////////////////////
+
+// create arms
+string $arm_L[] = `brCreatePuppetArm arm_L $clavical_L_cntrl $shoulder_L_cntrl $elbow_L_cntrl $wrist_L_cntrl 3 0`;
+string $arm_R[] = `brCreatePuppetArm arm_R $clavical_R_cntrl $shoulder_R_cntrl $elbow_R_cntrl $wrist_R_cntrl 3 0`;
+string $jArmRoot_L = $arm_L[0];
+string $jArmRoot_R = $arm_R[0];
+string $jArmSternum_L = $arm_L[1];
+string $jArmSternum_R = $arm_R[1];
+string $jAarmSternum_L = $arm_L[2];
+string $jArmShoulder_R = $arm_R[2];
+
+// create spine
+string $spine[] = `brCreatePuppetSpine back z $pelvis_cntrl $chest_cntrl 5`;
+string $jSpineRoot = $spine[0];
+string $jSpineChest = $spine[1];
+string $spineGroup = $spine[2];
+string $spineChestWrapper = $spine[3];
+string $spinePelvisWrapper = $spine[4];
+
+// create head and neck
+string $head[] = `brCreatePuppetHead neck -z $chest_cntrl $neck_cntrl $head_cntrl 4`;
+string $jNeck = $head[0];
+string $jHead = $head[1];
+string $neckGroup = $head[2];
+
+// create tail
+string $tail[] = `brCreatePuppetTail tail -z $pelvis_cntrl $tail_cntrl 12 3`;
+string $jTailRoot = $tail[0];
+string $tailGroup = $tail[1];
+
+// parent joints appropriately
+parent -a $jArmRoot_L $jArmRoot_R $jSpineChest;
+parent -a $jTailRoot $jSpineRoot;
+parent -a $jNeck $jSpineChest;
+
+
+///////////////////////////////////////////
+// organize the locators
+///////////////////////////////////////////
+
+// parent unused positioner controls under the chest and pelvis wrappers
+parent -a  $clavical_L_cntrl $clavical_R_cntrl $neck_cntrl $spineChestWrapper;
+parent -a  $tail_cntrl $spinePelvisWrapper;
+
+// parent head to the chest
+parent -a $head_cntrl $chest_cntrl;
+parent -a $pelvis_cntrl $chest_cntrl;
+
+// parent the elbow pole vectors to the chest
+parent -a $elbow_L_cntrl $elbow_R_cntrl $shoulder_R_cntrl $shoulder_L_cntrl $chest_cntrl;
+
+// hide locators that have become positioners
+hide  $tail_cntrl $clavical_L_cntrl $clavical_R_cntrl $neck_cntrl;
+
+// get the AP_puppetInfo node
+string $buf[] = `ls "AP_*"`;
+string $puppetInfoNode = $buf[0];
+
+// group the rig to make it all purdy.
+parent -a $spineGroup $neckGroup $tailGroup dontLookAtMe $puppetInfoNode;
+setAttr ( $jSpineChest + ".drawStyle") 1;
+setAttr ( $jSpineRoot  + ".drawStyle") 1;
+
+
+// print success
+print ":::::::::::::::::::::::::::::::::::::: \n";
+print "::: CREATURE rig successfully created \!\! \n";
+
+
+///////////////////////////////////////////
+// custom character setups below this line
+///////////////////////////////////////////
+
+// get model
+// file -f -options "v=0;p=17"  -typ "mayaAscii" -o "C:/prod/CREATURE/model/model.ma";
+
+// skin
+// select -r $jSpineRoot model ;
+// newSkinCluster "-ignoreHierarchy -mi 5 -dr 1";
+
+// add the skin to the off group
+// select -r model ;
+// layerEditorAddObjects OFF;
+// select -cl;

@@ -1,0 +1,22 @@
+global proc string[] vstGetPuppetControlNames(string $puppetNode)
+{
+	string $controlNodes[] = `listAttr -ud $puppetNode`;
+	string $controlNames[];
+
+	for ($c in $controlNodes)
+	{
+		string $controlNode[] = `listConnections ($puppetNode + "." + $c)`;
+		
+		// the puppet attributes should only have one connection, so error if there is more
+		if (size($controlNode) > 1)
+		{
+			error ("More than one connection found: " + $puppetNode + "." + $c);
+		}
+		else
+		{
+			$controlNames[size($controlNames)] = $controlNode[0];
+		}
+	}
+
+	return $controlNames;
+}

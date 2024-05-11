@@ -1,0 +1,157 @@
+// Copyright (C) 1997-2004 Alias Systems Corp.
+// 
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias license agreement, without fee.
+// 
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+
+//
+//
+//
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+//
+//	Script Paint Tool UI script 
+// 
+global proc artUserPaintCreateSetupFrame( 
+	string 	$parent,
+	string  $currTool
+)
+{
+	setUITemplate -pushTemplate OptionsTemplate;
+	setParent $parent;
+	
+	columnLayout;
+	textFieldGrp  -label "Tool Setup Cmd" toolSetupTextField; 
+	
+	textFieldGrp  -label "Tool Cleanup Cmd" toolCleanupTextField; 
+	separator -h 20 -style "none";
+	textFieldGrp  -label "Get Surface Cmd" getSrfTextField; 
+	textFieldGrp  -label "Get Array Attr. Cmd" getArrayAttrTextField; 
+	separator -h 20 -style "none";
+	textFieldGrp  -label "Initialize Cmd" initTextField; 
+	textFieldGrp  -label "Finalize Cmd" finalizeTextField; 
+	textFieldGrp  -label "Set Value Cmd" setValueTextField; 
+	textFieldGrp  -label "Get Value Cmd" getValueTextField; 
+	separator -h 20 -style "none";
+	checkBoxGrp -ncb 1 -l "Send Full Paths" -l1 "On/Off" fullPathsChkBox;
+	
+	setParent ..;
+	setParent ..;
+
+	setUITemplate -popTemplate;		 
+}
+
+source "artisanProperties.mel";
+source "artisanCallback.mel";
+
+source "artAttrProperties.mel";
+source "artUserPaintCallback.mel";
+
+// =======================================================
+// Main Procedure.
+// =======================================================
+global proc artUserPaintProperties()
+{
+	{
+		int $override = 0;
+		catch( $override = vst_artUserPaintProperties() );
+		if ( $override )
+			return;
+	}
+
+	string	$currContext = `currentCtx`;
+	string	$currTool	 = `contextInfo -c $currContext`;
+
+	setUITemplate -pushTemplate DefaultTemplate;
+
+	string $parent = `toolPropertyWindow -q -location`;
+	setParent $parent;
+
+	columnLayout -adj true artUserPaint;
+
+	// Brush frameLayout.
+	frameLayout -label " Brush "
+		-collapsable true -collapse false
+		artUserPaintBrushFrame;
+
+		// Create brush option menu.
+		artisanCreateBrushFrame( "artUserPaintBrushFrame", $currTool );
+	setParent ..;
+
+   	frameLayout -l " Paint Attributes "
+       	-collapsable true -collapse false
+       	artCommonOperationFrame;
+
+		setUITemplate -pushTemplate OptionsTemplate;
+		setParent artCommonOperationFrame;
+		columnLayout;
+
+		// Put all the common stuff.
+		artAttrCreateCommonProperties();
+
+		setParent ..;
+		setUITemplate -popTemplate;		 
+	setParent ..;
+		
+    // Stroke options.
+	frameLayout -l " Stroke "
+		-collapsable true -collapse true
+		artUserPaintStrokeFrame;
+
+		// Create stroke options.
+		artisanCreateStrokeFrame( "artUserPaintStrokeFrame", $currTool );
+	setParent ..;
+
+    // Stylus Pressure options.
+	frameLayout -l " Stylus Pressure "
+		-collapsable true -collapse true
+		artUserPaintPressureFrame;
+
+		// Create stroke options.
+		artisanCreatePressureFrame( "artUserPaintPressureFrame", $currTool );
+	setParent ..;
+	
+	// Attribute Maps options.
+	frameLayout -l " Attribute Maps "
+		-collapsable true -collapse true
+		artAttrAttrMapFrame;
+
+		// Create Attribute Map option menu.
+		artisanCreateAttrMapFrame( "artAttrAttrMapFrame", $currTool );
+	setParent ..;
+
+	// Display options.
+	frameLayout -l " Display "
+		-collapsable true -collapse true
+		artUserPaintDisplayFrame;
+
+		// Create Display options.
+		artisanCreateDisplayFrame( "artUserPaintDisplayFrame", $currTool );
+	setParent ..;
+	
+	// Setup options.
+	frameLayout -l " Setup "
+		-collapsable true -collapse true
+		artUserPaintSetupFrame;
+
+		// Create Display options.
+		artUserPaintCreateSetupFrame( "artUserPaintSetupFrame", $currTool );
+	setParent ..;
+		
+	setParent ..;
+	setUITemplate -popTemplate;
+
+	// Set the callbacks and various global functions.
+	artUserPaintCallback( "artUserPaintCtx" );
+}
+
+

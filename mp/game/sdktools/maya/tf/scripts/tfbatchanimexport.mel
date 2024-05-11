@@ -1,0 +1,67 @@
+global proc tfBatchAnimExport( string $player )
+{
+	zooUtils;
+	zooStrUtils;
+	zooArrays_str;
+	zooFlags;
+	zooAssetsUtils;
+	zooTriggeredUtils;
+	p4;
+
+	// todo: VPROJECT
+	string $pathMaya = resolvePath( "%VPROJECT%/../../content/tf/models/player/" + $player + "/animations/maya/" );
+	string $mayaFiles[] = `getFileList -folder $pathMaya -fs "*.ma"`;
+	string $node = ( "Rig:Ref:" + (tolower($player)) + "Info" );
+
+	for( $i = 0; $i < `size $mayaFiles`; $i++ )
+	{
+		$mayaFiles[$i] = ( $pathMaya + $mayaFiles[$i] );
+	}
+
+	for( $f in $mayaFiles )
+	{
+		// force open the file
+		print( "attempting to open file: "+ (toNativePath($f)) +"\n" );
+		file -prompt 0 -f -o $f;
+
+		string $sceneName = `file -q -sn`;
+		print ( $sceneName + "\n" );
+
+		int $hasAssets = size( `zooListAssets` );
+		if( !$hasAssets )
+		{
+			string $dmxName = `getAttr ( $node + ".exportName" )`;
+			string $baseSceneName = basenameEx( $sceneName );
+			string $baseDmxName = basenameEx( $dmxName );
+
+			if ( !`gmatch $baseSceneName $baseDmxName` )
+			{
+				print "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+				print ( " Scene name:\n    " + $sceneName + "\n" );
+				print ( "Export name:\n" + $dmxName + "\n" );
+				print "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+			}
+
+			$dmxName = `resolvePath $dmxName`;
+
+			//check to see if the export file is open for edit - if the file exists
+			string $dataNames[] = {};
+			string $data[] = {};
+			int $isEdit = -1;
+			if( `filetest -f (resolvePath($dmxName))` )
+			{
+				$isEdit = `isEdit $dmxName $dataNames $data`;
+				if( !$isEdit ) p4_edit {$dmxName} -1;
+			}
+			evalEcho( "vsDmxIO -sl -export -et s -filename \"" + $dmxName + "\" " + $node );
+
+		}
+		else
+		{
+			print "zoo exporting.\n";
+			zooExportAll;
+		}
+		print "---------------------------------------------------------------------------------------------------------------------------------------\n\n";
+	}
+}
+

@@ -1,0 +1,344 @@
+// brCreatePuppetSpine back $chestNode $pelvisNode $numJoints;
+//
+// file -f -new;
+// spaceLocator -p 0 0 0;
+// spaceLocator -p 0 0 0;
+// setAttr "locator2.translateY" 1;
+// source brCreatePuppetSpine;
+// brCreatePuppetSpine back locator1 locator2 6;
+// 
+
+
+global proc string[] brCreatePuppetSpine (string $name, string $direction, string $pelvis, string $chest, int $numJoints)
+{
+
+	if ((`gmatch $direction "z"`) || (`gmatch $direction "y"`) || (`gmatch $direction "-y"`) || (`gmatch $direction "-z"`)) 
+	{
+
+		select -cl;
+
+		// create names
+		string $spineName = $name;
+		string $root = ($spineName + "_root");
+		string $spineRoot = ($spineName + "_1");
+		string $spineEnd  = ($spineName + "_" + ( $numJoints -1 ));
+		string $spineChest = ($spineName + "_chest");
+
+		// get pelvis initial location
+		float $pelvisPos[] = `getAttr ($pelvis + ".translate")`;
+		float $pelvisRot[] = `getAttr ($pelvis + ".rotate")`;
+
+		// get chest initial location
+		float $chestPos[] = `getAttr ($chest + ".translate")`;	
+		float $chestRot[] = `getAttr ($chest + ".rotate")`;
+
+		// get pelvis initial location
+		float $spineRootPos[] = `getAttr ($pelvis + ".translate")`;
+		float $spineRootRot[] = `getAttr ($pelvis + ".rotate")`;
+
+		//get the initial length of the spine
+		float $dist = mag(<<$pelvisPos[0], $pelvisPos[1], $pelvisPos[2]>> - <<$chestPos[0], $chestPos[1], $chestPos[2]>>);
+
+		//set the initial bone length
+		float $jLength = $dist / $numJoints ;
+
+		// create the wrapper nodes
+  		string $chestWrapper   = ($name + "_chestWrapper");
+		string $pelvisWrapper  = ($name + "_pelvisWrapper");
+		string $spineNameGroup = ($spineName + "_group");	
+		createNode transform -n $chestWrapper   ;
+		createNode transform -n $pelvisWrapper  ;
+		createNode transform -n $spineNameGroup ;
+
+		// create skeleton joints.
+		select -cl;
+		string $shoulderOrient = ($spineName + "_shoulderOrient");
+		string $shoulderOrient_end = ($spineName + "_shoulderOrient_end");
+		string $hipOrient = ( $spineName + "_hipOrient");
+		if (`gmatch $direction "y"`) 
+		{
+			// create spine skeleton joints.
+			int $num = 1;
+			while ($num < ($numJoints + 1 ))
+			{
+
+				// create the joints
+				string $jname = ($spineName+ "_" + ($num - 1));
+				joint -p 0 ($jLength * $num) 0 -name $jname;
+				joint -e -zso -oj xzy $jname;
+				$num++;
+
+			}
+			rename ($spineName+ "_0") $root;
+			
+			// create spine orientation joints.
+			// create twist joint controler
+			select -cl;
+			joint -p 0 0 0 -name $hipOrient;
+			joint -e -zso -oj yxz -roo yxz $hipOrient;
+			joint -p 0 $dist 0 -name $shoulderOrient;
+			joint -e -zso -oj yxz -roo yxz $shoulderOrient;
+			joint -p 0 ( $dist + $jLength ) 0  -name $shoulderOrient_end;
+			joint -e -zso -oj yxz -roo yxz $shoulderOrient_end;
+			
+		}
+		if (`gmatch $direction "z"`) 
+		{
+			// create spine skeleton joints.
+			int $num = 1;
+			while ($num < ($numJoints + 1))
+			{
+
+				// create the joints
+				string $jname = ($spineName+ "_" + ($num - 1));
+				joint -p 0 0 ($jLength * $num) -name $jname;
+				joint -e -zso -oj xyz -roo xyz $jname;
+				$num++;
+
+			}
+			rename ($spineName+ "_0") $root;
+			
+			// create spine orientation joints.
+			// create twist joint controler
+			select -cl;
+			joint -p 0 0 0 -name $hipOrient;
+			joint -e -zso -oj zxy -roo zxy $hipOrient;
+			joint -p 0 0 $dist -name $shoulderOrient;
+			joint -e -zso -oj zxy -roo zxy $shoulderOrient;
+			joint -p 0 0 ( $dist + $jLength )  -name $shoulderOrient_end;
+			joint -e -zso -oj zxy -roo zxy $shoulderOrient_end;
+		}
+		if (`gmatch $direction "-z"`) 
+		{
+			// create spine skeleton joints.
+			int $num = 1;
+			while ($num < ($numJoints + 1))
+			{
+
+				// create the joints
+				string $jname = ($spineName+ "_" + ($num - 1));
+				joint -p 0 0 ($jLength * (- $num)) -name $jname;
+				joint -e -zso -oj xyz -roo xyz $jname;
+				$num++;
+
+			}
+			rename ($spineName+ "_0") $root;
+			
+			// create spine orientation joints.
+			// create twist joint controler
+			select -cl;
+			joint -p 0 0 0 -name $hipOrient;
+			joint -e -zso -oj zxy -roo zxy $hipOrient;
+			joint -p 0 0 ( - $dist) -name $shoulderOrient;
+			joint -e -zso -oj zxy -roo zxy $shoulderOrient;
+			joint -p 0 0 ( - ( $dist + $jLength ))  -name $shoulderOrient_end;
+			joint -e -zso -oj zxy -roo zxy $shoulderOrient_end;
+		}
+		parent -r $hipOrient $root $pelvis;
+		parent -w $hipOrient $root;
+		
+		
+		// orient the skeletons between the controls.
+		string $tmpChest[]  = `duplicate -rr $chest`;
+		parent -a $chest $shoulderOrient;
+		select -r $pelvis $root;
+		string $tmpPntConA[] = `pointConstraint -weight 1`;
+		select -r $tmpChest $root;
+		string $tmpPntConB[];
+		if (`gmatch $direction "z"`)
+		{
+			$tmpPntConB = `aimConstraint -weight 1 -aimVector 0 0 1 -upVector 0 1 0 -worldUpType "scene"`;
+		}
+		
+		if (`gmatch $direction "-z"`)
+		{
+			$tmpPntConB = `aimConstraint -weight 1 -aimVector 0 0 -1 -upVector 0 1 0 -worldUpType "scene"`;
+		}
+		if (`gmatch $direction "y"`) 
+		{
+			$tmpPntConB = `aimConstraint -weight 1 -aimVector 0 1 0 -upVector 0 1 0 -worldUpType "scene"`;
+		}
+		if (`gmatch $direction "-y"`) 
+		{
+			$tmpPntConB = `aimConstraint -weight 1 -aimVector 0 -1 0 -upVector 0 1 0 -worldUpType "scene"`;
+		}
+		delete $tmpPntConA[0];
+		delete $tmpPntConB[0];
+		delete $tmpChest[0];
+		parent -w -a $chest;
+
+
+		// get the spineRoot initial location
+		float $spineRootPos[] = `xform -q -ws -rp $spineRoot`;
+
+		// create spine curve
+		select -cl;
+		spaceLocator -p  0 0 0 -n "tmpLoc";
+		select $spineRoot  $chest tmpLoc;
+		string $tmpPntConA[] = `pointConstraint -weight 1`;
+		string $tmpPntCon = $tmpPntConA[0];
+		setAttr ($tmpPntCon + "." + $spineRoot + "W0") 0.5;
+		setAttr ($tmpPntCon + "." + $chest +"W1") 1.0;
+		float $chestWeightCV[] = `getAttr "tmpLoc.translate"`;
+		setAttr ($tmpPntCon + "." + $spineRoot + "W0") 1.0;
+		setAttr ($tmpPntCon + "." + $chest + "W1") 0.5;
+		float $pelvisWeightCV[] = `getAttr "tmpLoc.translate"`;
+		delete tmpLoc;
+		string $tmpC = `curve -d 3 -p $chestPos[0] $chestPos[1] $chestPos[2]  -p  $chestWeightCV[0] $chestWeightCV[1] $chestWeightCV[2] -p  $pelvisWeightCV[0] $pelvisWeightCV[1] $pelvisWeightCV[2]  -p $spineRootPos[0] $spineRootPos[1] $spineRootPos[2] -k 0 -k 0 -k 0 -k 1 -k 1 -k 1`;
+
+		// create IK spline
+		select -r $spineRoot $spineEnd $tmpC;
+		string $spineIkName = ($spineName + "_Ik");
+		string $ikSplineCurve[] = `ikHandle -sol ikSplineSolver -name $spineIkName`;
+		delete $tmpC;
+		string $spineCurveName = ($spineName + "Curve");
+		rename $ikSplineCurve[2] $spineCurveName;
+		setAttr ($spineIkName + ".twistType") 0;
+		parent -w -a $spineCurveName;
+		setAttr ($spineCurveName + ".inheritsTransform") 0;
+		
+
+		// create chest cluster
+		string $chestCluster =   ($spineName + "_cCluster");
+		select -r ($spineCurveName + ".cv[2]") ;
+		select -add ($spineCurveName + ".cv[3]") ;
+		string $names[] = `newCluster " -envelope 1"`;
+		rename $names[1] $chestCluster;
+		setAttr ($spineName + "_cCluster.rotatePivot") $chestPos[0] $chestPos[1] $chestPos[2];	
+		setAttr ($spineName + "_cCluster.scalePivot") $chestPos[0] $chestPos[1] $chestPos[2];
+		
+		  
+		// create pelvis cluster
+		string $pelvisCluster =  ($spineName + "_pCluster");
+		select -r ($spineCurveName + ".cv[0]") ;
+		select -add ($spineCurveName + ".cv[1]") ;
+		string $names[] = `newCluster " -envelope 1"`;
+		rename $names[1] $pelvisCluster;
+		setAttr ($spineName + "_pCluster.rotatePivot") $pelvisPos[0] $pelvisPos[1] $pelvisPos[2];
+		setAttr ($spineName + "_pCluster.scalePivot") $pelvisPos[0] $pelvisPos[1] $pelvisPos[2];
+
+
+		// create stretchy back expressions.
+		string $Cinf = `createNode -name ($spineName + "InfoNode") curveInfo`;
+		connectAttr ($spineCurveName + ".worldSpace[0]") ($Cinf + ".inputCurve");
+		$bexpr = "// bone length expression ;\n";
+		$bexpr += ("\$scale \= " + $Cinf + ".arcLength\/" + $dist + ";\n") ;
+		float $sizeVal = ($dist / ($numJoints - 2 ));	
+		string $bones[] = `listRelatives -ad -typ joint -c $spineRoot`;
+		for ($bone in $bones)
+		{
+			if (`gmatch $direction "y"`)
+			{
+				$bexpr += ($bone + ".ty = $scale * " + $sizeVal + ";\n");
+			}
+			if (`gmatch $direction "-y"`)
+			{
+				$bexpr += ($bone + ".ty = - $scale * " + $sizeVal + ";\n");
+			}
+			if (`gmatch $direction "z"`) 
+			{
+				$bexpr += ($bone + ".tz = $scale * " + $sizeVal + ";\n");
+			}
+			if (`gmatch $direction "-z"`)
+			{
+				$bexpr += ($bone + ".tz =  - $scale * " + $sizeVal + ";\n");
+			}
+		}
+		expression -s $bexpr -n "stretchyBack" ;
+
+
+		// setup orient IK rig for the back twist
+		string $orient_IkHandle = ($spineName + "_twistIkHandle");
+		ikHandle -sj $hipOrient -ee $shoulderOrient -name $orient_IkHandle;
+		pointConstraint -weight 1  $chest $orient_IkHandle;
+		orientConstraint -weight 1  $chest $shoulderOrient;
+		parent -r $spineIkName $orient_IkHandle $spineCurveName $pelvisWrapper; 
+
+		// parent -r $root $spineIkName $orient_IkHandle $spineCurveName $pelvisWrapper; 
+
+		// create twist IK expression
+		string $bexpr;
+		string $expLine1;
+		if  (`gmatch $direction "y"`)
+		{
+			$expLine1 = ($spineIkName + ".twist" + " \= " + $shoulderOrient + ".ry ;\n");
+		}
+		if  (`gmatch $direction "-y"`)
+		{
+			$expLine1 = ($spineIkName + ".twist" + " \= - " + $shoulderOrient + ".ry ;\n");
+		}
+		
+		if ((`gmatch $direction "z"`) || (`gmatch $direction "-z"`)) 
+		{
+			$expLine1 = ($spineIkName + ".twist" + " \= " + $shoulderOrient + ".rz ;\n");
+		}
+		if (`gmatch $direction "-z"`)
+		{
+			$expLine1 = ($spineIkName + ".twist" + " \=  - " + $shoulderOrient + ".rz ;\n");
+		}
+		$bexpr = $expLine1;
+		expression -s $bexpr -n ($spineIkName + "_twist");	
+		
+		// contraint the wrappers to the controls.
+		pointConstraint -weight 1 $chest $chestWrapper;
+		orientConstraint -weight 1 $chest $chestWrapper;
+		pointConstraint -weight 1 $pelvis $pelvisWrapper;
+		orientConstraint -weight 1 $pelvis $pelvisWrapper;
+
+		// parent the clusters
+		parent -a $pelvisCluster $pelvisWrapper;
+		parent -a $chestCluster $chestWrapper ;
+		
+		parent -a $root $pelvisWrapper; 
+		
+		// organize things.
+		parent -a $pelvisWrapper $chestWrapper $hipOrient $spineNameGroup;
+		
+		// create chest joint
+		select -r $spineEnd;
+		if ((`gmatch $direction "y"`) || (`gmatch $direction "-y"`))
+		{
+			joint -p 0 0 0 -name $spineChest;
+			joint -e -zso -oj xzy -roo yxz $spineChest;
+		}
+		if ((`gmatch $direction "z"`) || (`gmatch $direction "-z"`)) 
+		{
+			joint -p 0 0 0 -name $spineChest;
+			joint -e -zso -oj zxy -roo zxy $spineChest;
+		}
+		select -cl;
+		pointConstraint -weight 1 $chest $spineChest;
+		orientConstraint -weight 1 $chest $spineChest;
+		
+		
+		// cleanup
+		string $stuff[] = {
+			(""+$chestWrapper+""),
+			(""+$hipOrient+""),
+			(""+$pelvisWrapper+"")
+		};
+		brLock $stuff;
+		hide $spineIkName $orient_IkHandle $spineCurveName $pelvisCluster $chestCluster $hipOrient;
+		parent -a $hipOrient $pelvisWrapper;
+	
+		//return $spineRoot;
+		//return $spineChest;
+		string $outArray[] = {
+			$root,
+			$spineChest,
+			$spineNameGroup,
+			$chestWrapper,
+			$pelvisWrapper
+		};
+		print ("::: " + $name + " spine created \!\! \n");
+		return ($outArray);
+	
+	
+		
+	}
+	else
+	{
+		error "you must choose z or y as the spine's major orientation";
+	}
+}
+

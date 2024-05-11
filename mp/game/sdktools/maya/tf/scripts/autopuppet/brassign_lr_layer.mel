@@ -1,0 +1,30 @@
+global proc brAssign_LR_layer (string $object, string $side)
+{	
+	if (`gmatch $side "L"`)
+	{
+		if (!`objExists "L"`)
+		{
+			createDisplayLayer -name "L" -number 1 -empty;
+			setAttr L.color 14;
+		}
+		editDisplayLayerMembers L $object;
+	}
+	if (`gmatch $side "R"`)
+	{
+		if (!`objExists "R"`)	
+		{
+			createDisplayLayer -name "R" -number 1 -empty;
+			setAttr R.color 13;
+		}
+		editDisplayLayerMembers R $object;
+	}
+	if (`gmatch $side "C"`)
+	{
+		if (!`objExists "C"`)	
+		{
+			createDisplayLayer -name "C" -number 1 -empty;
+			setAttr C.color 15;
+		}
+		editDisplayLayerMembers C $object;
+	}
+}

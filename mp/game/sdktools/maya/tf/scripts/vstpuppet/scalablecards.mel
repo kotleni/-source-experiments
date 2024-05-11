@@ -1,0 +1,117 @@
+proc float _getBBDiagonal( string $object )
+{
+	float $bound[] = `xform -q -bb $object`;
+	float $distance = mag (<<$bound[0], $bound[1], $bound[2]>> - <<$bound[3], $bound[4], $bound[5]>>);
+	return $distance;
+}
+
+global proc makeCardSkeleton()
+{
+	string $sel[] = `ls -sl`;
+	select -cl;
+	string $mainRoot = `joint -n root`;
+
+	for ( $s in $sel )
+	{
+		select $mainRoot;
+
+		// get pivot, make root joint
+		float $rootPosition[] = `xform -q -rp $s`;
+		string $rootJoint = `joint -p $rootPosition[0] $rootPosition[1] $rootPosition[2] -n ( $s + "_root" )`;
+
+		// make joints for the verts
+		int $numJoints[] = `polyEvaluate -v $s`;
+		for ( $i = 0; $i < $numJoints[0]; $i++ )
+		{
+			float $jointPos[] = `pointPosition ( $s + ".vtx[" + $i + "]" )`;
+			select $rootJoint;
+			joint -p $jointPos[0] $jointPos[1] $jointPos[2] -n ( $s + "_jnt_" + $i );
+		}
+		
+		// skin	only to children of the root joint
+		select `listRelatives -c $rootJoint`;
+		select -add $s;
+		newSkinCluster "-toSelectedBones  -ibp -mi 3 -omi true -dr 4 -rui true";	
+	}
+}
+
+
+global proc makeCardRig()
+{
+	// bad assumptions, but let's make them anyway:
+	// root joint has N children, who each have N joints that get a locator
+	// cards are facing positive z
+
+	string $sel[] = `ls -sl`;
+	string $mainChildren[] = `listRelatives -c $sel[0]`;
+
+	// make the main control
+	// use 1/2 the distance of the corners of the bounding box for now
+	float $radius = .5 * `_getBBDiagonal $sel[0]`;
+	string $mainName[] = `cylinder -p 0 0 0 -ax 0 1 0 -ssw 0 -esw 360 -r $radius -hr 2 -d 1 -ut 0 -tol 0.01 -s 8 -nsp 1 -ch 0 -name main`;
+	setAttr( $mainName[0] + ".sy" ) 0;
+	makeIdentity -apply true -s 1 $mainName[0];
+	vstSetDisplay( "C", $mainName[0] );
+	vstHideChannels $mainName[0] {".v"};
+
+
+	for ( $child in $mainChildren )
+	{
+		string $buffer[];
+		tokenize $child ":" $buffer;
+		string $newName = $buffer[`size($buffer)`-1];
+		// create main
+		float $radius = .2 * `_getBBDiagonal $child	`;
+		string $main[] = `cylinder -p 0 0 0 -ax 0 0 1 -ssw 0 -esw 360 -r $radius -hr 2 -d 1 -ut 0 -tol 0.01 -s 8 -nsp 1 -ch 0 -name ( "main_" + $newName )`;
+		delete `parentConstraint $child $main[0]`;
+		setAttr( $main[0] + ".sz" ) 0;
+		makeIdentity -apply true $main[0];
+		vstSetDisplay( "C", $main[0] );
+		vstHideChannels $main[0] {".v"};
+			
+		// create trans/rot/scale node
+		string $trs[] = `nurbsPlane -p 0 0 0 -ax 0 0 1 -w 1 -lr 1 -d 3 -u 1 -v 1 -ch 1 -name ( "trs_" + $newName )`;
+		delete `parentConstraint $child $trs[0]`;
+		
+		// move the cvs to the bounding box
+		float $boundBox[] = `xform -q -bb $child`;
+		select -r ( $trs[0] + ".cv[0:3][3]" ) ;
+		move -y $boundBox[4];
+		select -r ( $trs[0] + ".cv[0][0:3]" ) ;
+		move -x $boundBox[0];
+		select -r ( $trs[0] + ".cv[3][0:3]" ) ;
+		move -x $boundBox[3];
+		select -r ( $trs[0] + ".cv[0:3][0]" ) ;
+		move -y $boundBox[1];
+		select $trs[0];
+		makeIdentity -apply true $trs[0];
+		vstSetDisplay( "P", $trs[0] );
+		parent $trs[0] $main[0];
+		parentConstraint $trs[0] $child;
+		vstHideChannels $trs[0] {".v"};
+
+		// create locators for each joint parented to trans/rot/scale
+		string $jointChildren[] = `listRelatives -c -typ joint $child`;
+		for ( $jc in $jointChildren )
+		{
+			string $locatorName[] = `spaceLocator -n ( "loc_" + $jc )`;
+			delete `parentConstraint $jc $locatorName[0]`;
+			parent $locatorName[0] $trs[0];
+			makeIdentity -apply true $locatorName[0];
+			setAttr ( $locatorName[0] + ".v" ) 0;
+			string $channels[] = { ".tx", ".ty", ".tz", ".rx", ".ry", ".rz", ".sx", ".sy", ".sz", ".v" };
+			vstHideChannels $locatorName[0] $channels;
+			parentConstraint $locatorName[0] $jc;
+
+		}
+
+		
+		// constrain joints to locators, and root to trans/rot/scale
+		
+		parent $main[0] $mainName[0];
+	
+	}
+	
+	parentConstraint $mainName $sel[0];
+
+}

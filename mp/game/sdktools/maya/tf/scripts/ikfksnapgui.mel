@@ -1,0 +1,240 @@
+//THIS SCRIPT IS A SIMPLE TOOL FOR SNAPPING IK TO FK AND FK TO IK.
+
+//If you have any questions, please just let me know. 
+
+//ahalifax@valvesoftware.com
+
+global string $IKFKOptMenu;
+
+global string $IKFKradCol;
+
+global float $IKtranMod[];
+
+global float $poleTranMod[];
+
+global proc IKFKsnapGUI(){
+
+global string $IKFKOptMenu;
+
+global string $IKFKradCol;
+
+string $IKFKsnapWin = `window -title "IK/FK snap" 
+
+-iconName "IK/FK"
+
+-menuBar true
+
+-widthHeight 380 125`;
+
+menu -label "Help" -hm true;
+
+menuItem -label "Come talk to me if you have problems. email: ahalifax@valvesoftware.com";
+
+menu -label "Cancel";
+
+menuItem -label "CLOSE" -command "deleteUI $IKFKsnapWin";
+
+string $IKFKform = `formLayout -numberOfDivisions 100`;
+
+string $IKFKOptMenu = `optionMenu -label "Select Arm: "`;
+
+menuItem -label "Right Hand";
+
+menuItem -label "Left Hand";
+
+string $IKFKsnapCmd = `button -label "SNAP" -c testCmd`;
+
+string $IKFKradCol = `radioButtonGrp -numberOfRadioButtons 2 -columnWidth2 70 70 -labelArray2 "IK -> FK" "FK -> IK"`;
+
+
+formLayout -edit
+
+-attachForm $IKFKOptMenu "top" 5
+
+-attachForm $IKFKOptMenu "left" 5
+
+-attachControl $IKFKOptMenu "bottom" 5 $IKFKsnapCmd
+
+-attachPosition $IKFKOptMenu "right" 5 50
+
+-attachForm $IKFKradCol "top" 5
+
+-attachPosition $IKFKradCol "left" 5 50
+
+-attachControl $IKFKradCol "bottom" 5 $IKFKsnapCmd
+
+-attachForm $IKFKradCol "right" 5
+
+
+-attachNone $IKFKsnapCmd "top"
+
+-attachForm $IKFKsnapCmd "left" 5
+
+-attachForm $IKFKsnapCmd "bottom" 5
+
+-attachForm $IKFKsnapCmd "right" 5
+
+$IKFKform;
+
+showWindow $IKFKsnapWin;
+
+}
+
+global proc testCmd(){
+
+global string $IKFKOptMenu;
+
+global string $IKFKradCol;
+
+global float $IKtranMod[];
+
+global float $poleTranMod[];
+
+int $qRadGrpCol = `radioButtonGrp -q -sl $IKFKradCol`;
+
+string $radResult[2] = {"FK", "IK"};
+
+string $qOptMenu = `optionMenu -q -v $IKFKOptMenu`;
+
+int $Ntracker;
+
+float $IKtran[];
+
+float $PoleTran[];
+
+float $FKelbowRot[];
+
+float $FKhandRot[];
+
+float $FKwristRot[];
+
+//for Right Hand/FK ARM switch (switch from IK to FK, where FK lines up with IK's position
+
+if ($qOptMenu == "Right Hand" && $qRadGrpCol <= 1){
+
+float $FKelbowRot[] = `xform -q -a -ws -ro Rig:Ref:bip_upperArm_RIK`;
+
+float $FKhandRot[] = `xform -q -a -ws -ro Rig:Ref:bip_lowerArm_RIK`;
+
+float $FKwristRot[] = `xform -q -a -ws -ro Rig:rHandControl`;
+
+xform -a -ws -ro ($FKelbowRot[0]) $FKelbowRot[1] $FKelbowRot[2] Rig:Ref:bip_upperArm_RFK;
+
+xform -a -ws -ro $FKhandRot[0] $FKhandRot[1] $FKhandRot[2] Rig:Ref:bip_lowerArm_RFK;
+
+setAttr Rig:main.rArmIKFK 0;
+
+xform -a -ws -ro ($FKwristRot[0]) ($FKwristRot[1]) ($FKwristRot[2]) Rig:rHandControl;
+
+//for Right Hand/IK ARM switch (switch from FK to IK, where the IK lines up with the FK's position
+
+} else if ($qOptMenu == "Right Hand" && $qRadGrpCol >= 2){
+
+float $FKwristRot[] = `xform -q -a -ws -ro Rig:rHandControl`;
+
+cycleCheck -e off;
+
+if( `objExists snapHolderR`){delete snapHolderR;}
+
+createNode "transform" -n "snapHolderR";
+
+pointConstraint Rig:Ref:bip_hand_R snapHolderR;
+
+if( `objExists snapHolderR_Pole`){delete snapHolderR_Pole;}
+
+createNode "transform" -n "snapHolderR_Pole";
+
+pointConstraint Rig:Ref:bip_lowerArm_R snapHolderR_Pole;
+
+pointConstraint snapHolderR Rig:rikHandControl;
+
+pointConstraint snapHolderR_Pole Rig:rElbowControl;
+
+float $IKtran[] = `xform -q -ws -t Rig:rikHandControl`;
+
+float $PoleTran[] = `xform -q -ws -t Rig:rElbowControl`;
+
+setAttr "Rig:main.rArmIKFK" 1;
+
+delete -cn Rig:rikHandControl;
+
+delete -cn Rig:rElbowControl;
+
+xform -ws -t $IKtran[0] $IKtran[1] $IKtran[2] Rig:rikHandControl;
+
+xform -ws -t $PoleTran[0] $PoleTran[1] $PoleTran[2] Rig:rElbowControl;
+
+delete snapHolderR;
+
+delete snapHolderR_Pole;
+
+xform -a -ws -ro ($FKwristRot[0]) ($FKwristRot[1]) ($FKwristRot[2]) Rig:rHandControl;
+
+
+//for Left Hand/FK ARM switch (switch from IK to FK, where FK lines up with IK's position
+
+}else if ($qOptMenu == "Left Hand" && $qRadGrpCol <= 1){
+
+float $FKelbowRot[] = `xform -q -a -ws -ro Rig:Ref:bip_upperArm_LIK`;
+
+float $FKhandRot[] = `xform -q -a -ws -ro Rig:Ref:bip_lowerArm_LIK`;
+
+float $FKwristRot[] = `xform -q -a -ws -ro Rig:lHandControl`;
+
+xform -a -ws -ro ($FKelbowRot[0]) $FKelbowRot[1] $FKelbowRot[2] Rig:Ref:bip_upperArm_LFK;
+
+xform -a -ws -ro $FKhandRot[0] $FKhandRot[1] $FKhandRot[2] Rig:Ref:bip_lowerArm_LFK;
+
+setAttr Rig:main.lArmIKFK 0;
+
+xform -a -ws -ro ($FKwristRot[0]) ($FKwristRot[1]) ($FKwristRot[2]) Rig:lHandControl;
+
+//for Left Hand/IK ARM switch (switch from FK to IK, where the IK lines up with the FK's position
+
+} else if ($qOptMenu == "Left Hand" && $qRadGrpCol >= 2){
+
+float $FKwristRot[] = `xform -q -a -ws -ro Rig:lHandControl`;
+
+cycleCheck -e off;
+
+if( `objExists snapHolderL`){delete snapHolderL;}
+
+createNode "transform" -n "snapHolderL";
+
+pointConstraint Rig:Ref:bip_hand_L snapHolderL;
+
+if( `objExists snapHolderL_Pole`){delete snapHolderL_Pole;}
+
+createNode "transform" -n "snapHolderL_Pole";
+
+pointConstraint Rig:Ref:bip_lowerArm_L snapHolderL_Pole;
+
+pointConstraint snapHolderL Rig:likHandControl;
+
+pointConstraint snapHolderL_Pole Rig:lElbowControl;
+
+float $testes[] = `xform -q -ws -t Rig:likHandControl`;
+
+float $testesPole[] = `xform -q -ws -t Rig:lElbowControl`;
+
+setAttr "Rig:main.lArmIKFK" 1;
+
+delete -cn Rig:likHandControl;
+
+delete -cn Rig:lElbowControl;
+
+xform -ws -t $testes[0] $testes[1] $testes[2] Rig:likHandControl;
+
+xform -ws -t $testesPole[0] $testesPole[1] $testesPole[2] Rig:lElbowControl;
+
+delete snapHolderL;
+
+delete snapHolderL_Pole;
+
+xform -a -ws -ro ($FKwristRot[0]) ($FKwristRot[1]) ($FKwristRot[2]) Rig:lHandControl;
+
+}
+
+}
+
+IKFKsnapGUI;

@@ -1,0 +1,80 @@
+//
+//script for creating an IK driven legs
+//
+
+global proc string[] brCreateHelperBones (string $name, string $srcStartJoint, string $srcEndJoint, int $numHelpers)
+{
+	// create the controller node
+	string $dup[] = `duplicate -rr $srcStartJoint`;
+	$controller = `rename $dup[0] ($srcStartJoint + "_controller")`;
+	delete `listRelatives -f -c $controller`;
+
+	// position the thing
+	select $srcStartJoint $controller ;
+	$pc = `pointConstraint`;
+	delete $pc;
+	select $srcStartJoint $controller ;
+	$oc = `orientConstraint`;
+	delete $oc;
+
+
+	// get the length of the bone.
+	$startPos = `xform -q -ws -rp  ($srcStartJoint)`;
+	$endPos = `xform -q -ws -rp  ($srcEndJoint)`;
+	float $startPos0 = $startPos[0];
+	float $startPos1 = $startPos[1];
+	float $startPos2 = $startPos[2];
+	float $endPos0 = $endPos[0];
+	float $endPos1 = $endPos[1];
+	float $endPos2 = $endPos[2];
+	float $length = mag(<<$startPos0, $startPos1, $startPos2>> - <<$endPos0, $endPos1, $endPos2>>);
+
+
+
+	// the main loop
+	if ($numHelpers != 0)
+	{
+		select -d $srcStartJoint;
+		string $lastHelper = $controller;
+		int $x = 1; 
+		while ($x <= $numHelpers)
+		{	
+			float $num = ($x + 1);
+			float $spacer = ( $length / $numHelpers);
+			float $hLength = ($x * $spacer);
+			
+			// create the helper bones
+			//select -r $lastHelper;
+			//string $dup[] = `duplicate -rr $controller`;
+			//$currentHelper = `rename $dup[0] ($srcStartJoint + "_helper_" + $number)`;
+	
+			// create elbow joint
+			$currentHelper = `joint -p 0 0 0 -n ($srcStartJoint + "_helper_" + $num)`;
+			parent -r $currentHelper $srcStartJoint;
+			joint -e -zso -oj yzx $currentHelper;
+			xform -t 0 (-$hLength) 0 $currentHelper;
+
+			// create the multiply node
+			string $multiplyNode = `shadingNode -asUtility multiplyDivide`;
+		
+			// connect the helper bones
+			connectAttr -f ($controller + ".rotateY") ($multiplyNode + ".input1X");
+			connectAttr -f ($multiplyNode + ".outputX") ($currentHelper + ".rotateY");
+			setAttr ($multiplyNode + ".input2X") (1.0/($num));
+
+			// move the helper bones down the bone
+			//parent -r $currentHelper $lastHelper;
+//			setAttr ($currentHelper + ".tx") 0 ;
+//			setAttr ($currentHelper + ".ty") $Length  ;
+//			setAttr ($currentHelper + ".tz") 0 ;
+			
+			//string $lastHelper = $currentHelper;
+			$x++;
+		}
+	}	
+	string $outLegArray[] = {
+	};
+	
+	print "::: helper bones created  \!\! \n";
+	return ($outLegArray);
+}

@@ -1,0 +1,184 @@
+// create the puppetInfoNode
+string $creatureInfo = "AP_vHuman" ;
+createNode transform -n  $creatureInfo ;
+
+// create head
+createNode transform -n head;
+xform -t  0.000000 64.58778463 -0.7726155078 head;
+addAttr -ln head -at "message" $creatureInfo ;
+connectAttr -f head.message ( $creatureInfo + "." + "head");
+setAttr head.displayHandle 1;
+brAssign_LR_layer head C;
+brHideAttrsv head ;
+
+// create neck
+createNode transform -n neck;
+xform -t  0.000000 61.57054944 -2.740023906 neck;
+addAttr -ln neck -at "message" $creatureInfo ;
+connectAttr -f neck.message ( $creatureInfo + "." + "neck");
+setAttr neck.displayHandle 1;
+brAssign_LR_layer neck C;
+brHideAttrsv neck ;
+
+// create chest
+createNode transform -n chest;
+xform -t  0.000000 58.31281308 -3.304975452 chest;
+addAttr -ln chest -at "message" $creatureInfo ;
+connectAttr -f chest.message ( $creatureInfo + "." + "chest");
+setAttr chest.displayHandle 1;
+brAssign_LR_layer chest C;
+brHideAttrsv chest ;
+
+// create pelvis
+createNode transform -n pelvis;
+xform -t  0.000000 38.566914 0.533611 pelvis;
+addAttr -ln pelvis -at "message" $creatureInfo ;
+connectAttr -f pelvis.message ( $creatureInfo + "." + "pelvis");
+setAttr pelvis.displayHandle 1;
+brAssign_LR_layer pelvis C;
+brHideAttrsv pelvis ;
+
+// create clavicle_L
+createNode transform -n clavicle_L;
+xform -t  1.937666105 60.17495918 -1.989526222 clavicle_L;
+addAttr -ln clavicle_L -at "message" $creatureInfo ;
+connectAttr -f clavicle_L.message ( $creatureInfo + "." + "clavicle_L");
+setAttr clavicle_L.displayHandle 1;
+brAssign_LR_layer clavicle_L L;
+brHideAttrsv clavicle_L ;
+
+// create shoulder_L
+createNode transform -n shoulder_L;
+xform -t  7.723857305 58.48458585 -1.956160068 shoulder_L;
+addAttr -ln shoulder_L -at "message" $creatureInfo ;
+connectAttr -f shoulder_L.message ( $creatureInfo + "." + "shoulder_L");
+setAttr shoulder_L.displayHandle 1;
+brAssign_LR_layer shoulder_L L;
+brHideAttrsv shoulder_L ;
+
+// create elbow_L
+createNode transform -n elbow_L;
+xform -t  15.26443086 49.56528913 -2.505446467 elbow_L;
+addAttr -ln elbow_L -at "message" $creatureInfo ;
+connectAttr -f elbow_L.message ( $creatureInfo + "." + "elbow_L");
+setAttr elbow_L.displayHandle 1;
+brAssign_LR_layer elbow_L L;
+brHideAttrsv elbow_L ;
+
+// create wrist_L
+createNode transform -n wrist_L;
+xform -t  22.67650053 40.79794177 -2.351857854 wrist_L;
+addAttr -ln wrist_L -at "message" $creatureInfo ;
+connectAttr -f wrist_L.message ( $creatureInfo + "." + "wrist_L");
+setAttr wrist_L.displayHandle 1;
+brAssign_LR_layer wrist_L L;
+brHideAttrsv wrist_L ;
+
+// create hip_L
+createNode transform -n hip_L;
+xform -t  3.890447 38.566914 0.533611 hip_L;
+addAttr -ln hip_L -at "message" $creatureInfo ;
+connectAttr -f hip_L.message ( $creatureInfo + "." + "hip_L");
+setAttr hip_L.displayHandle 1;
+brAssign_LR_layer hip_L L;
+brHideAttrsv hip_L ;
+
+// create knee_L
+createNode transform -n knee_L;
+xform -t  3.983530152 20.74295394 -0.3912008348 knee_L;
+addAttr -ln knee_L -at "message" $creatureInfo ;
+connectAttr -f knee_L.message ( $creatureInfo + "." + "knee_L");
+setAttr knee_L.displayHandle 1;
+brAssign_LR_layer knee_L L;
+brHideAttrsv knee_L ;
+
+// create heel_L
+createNode transform -n heel_L;
+xform -t  4.06951078 4.279049121 -1.811258707 heel_L;
+addAttr -ln heel_L -at "message" $creatureInfo ;
+connectAttr -f heel_L.message ( $creatureInfo + "." + "heel_L");
+setAttr heel_L.displayHandle 1;
+brAssign_LR_layer heel_L L;
+brHideAttrsv heel_L ;
+
+// create toe_L
+createNode transform -n toe_L;
+xform -t  4.369810688 0.4837695131 3.918712825 toe_L;
+addAttr -ln toe_L -at "message" $creatureInfo ;
+connectAttr -f toe_L.message ( $creatureInfo + "." + "toe_L");
+setAttr toe_L.displayHandle 1;
+brAssign_LR_layer toe_L L;
+brHideAttrsv toe_L ;
+
+// create clavicle_R
+createNode transform -n clavicle_R;
+xform -t  -1.937655895 60.17496029 -1.989527432 clavicle_R;
+addAttr -ln clavicle_R -at "message" $creatureInfo ;
+connectAttr -f clavicle_R.message ( $creatureInfo + "." + "clavicle_R");
+setAttr clavicle_R.displayHandle 1;
+brAssign_LR_layer clavicle_R R;
+brHideAttrsv clavicle_R ;
+
+// create shoulder_R
+createNode transform -n shoulder_R;
+xform -t  -7.723848087 58.48459028 -1.956164893 shoulder_R;
+addAttr -ln shoulder_R -at "message" $creatureInfo ;
+connectAttr -f shoulder_R.message ( $creatureInfo + "." + "shoulder_R");
+setAttr shoulder_R.displayHandle 1;
+brAssign_LR_layer shoulder_R R;
+brHideAttrsv shoulder_R ;
+
+// create elbow_R
+createNode transform -n elbow_R;
+xform -t  -15.2644225 49.56529458 -2.505455889 elbow_R;
+addAttr -ln elbow_R -at "message" $creatureInfo ;
+connectAttr -f elbow_R.message ( $creatureInfo + "." + "elbow_R");
+setAttr elbow_R.displayHandle 1;
+brAssign_LR_layer elbow_R R;
+brHideAttrsv elbow_R ;
+
+// create wrist_R
+createNode transform -n wrist_R;
+xform -t  -22.67653602 40.79794885 -2.351871434 wrist_R;
+addAttr -ln wrist_R -at "message" $creatureInfo ;
+connectAttr -f wrist_R.message ( $creatureInfo + "." + "wrist_R");
+setAttr wrist_R.displayHandle 1;
+brAssign_LR_layer wrist_R R;
+brHideAttrsv wrist_R ;
+
+// create hip_R
+createNode transform -n hip_R;
+xform -t  -3.890447 38.566914 0.533611 hip_R;
+addAttr -ln hip_R -at "message" $creatureInfo ;
+connectAttr -f hip_R.message ( $creatureInfo + "." + "hip_R");
+setAttr hip_R.displayHandle 1;
+brAssign_LR_layer hip_R R;
+brHideAttrsv hip_R ;
+
+// create knee_R
+createNode transform -n knee_R;
+xform -t  -3.983518978 20.74295388 -0.3912008348 knee_R;
+addAttr -ln knee_R -at "message" $creatureInfo ;
+connectAttr -f knee_R.message ( $creatureInfo + "." + "knee_R");
+setAttr knee_R.displayHandle 1;
+brAssign_LR_layer knee_R R;
+brHideAttrsv knee_R ;
+
+// create heel_R
+createNode transform -n heel_R;
+xform -t  -4.069488931 4.279049007 -1.811258707 heel_R;
+addAttr -ln heel_R -at "message" $creatureInfo ;
+connectAttr -f heel_R.message ( $creatureInfo + "." + "heel_R");
+setAttr heel_R.displayHandle 1;
+brAssign_LR_layer heel_R R;
+brHideAttrsv heel_R ;
+
+// create toe_R
+createNode transform -n toe_R;
+xform -t  -4.369785858 0.4837698033 3.918713249 toe_R;
+addAttr -ln toe_R -at "message" $creatureInfo ;
+connectAttr -f toe_R.message ( $creatureInfo + "." + "toe_R");
+setAttr toe_R.displayHandle 1;
+brAssign_LR_layer toe_R R;
+brHideAttrsv toe_R ;
+

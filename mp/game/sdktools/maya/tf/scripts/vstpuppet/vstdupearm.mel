@@ -1,0 +1,126 @@
+//*****************************************
+//
+//	vstDupeArm
+// 	by: steve
+//	stevek@valvesoftware.com
+//	3-07-06
+// -makes a dupliacte three bone arm
+// use: vstDupeArm(side, joint1, joint2, joint3, type)
+// for example to make a duplicate right arm you would call this:
+// vstDupeLimb("R", "upperarm", "lowerarm", "wrist", "FK")
+//******************************************
+
+global proc string[] vstDupeArm (string $side, string $joint1, string $joint2, string $joint3, string $type)
+{
+	string $dupeArm[];
+	select -cl;
+//name the new joints
+	string $newUp =  $side + $type + $joint1;
+	string $newMid = $side + $type + $joint2;
+	string $newEnd = $side + $type + $joint3;
+	
+//make the new joints at the origin
+	string $attr = $joint1 + ".radius";
+	float $radius = `getAttr $attr`;
+	
+	joint -n $newUp;
+		setAttr ($newUp + ".radius") 2;
+	joint -n $newMid;
+		setAttr ($newMid+ ".radius") 2;
+	joint -n $newEnd;
+		setAttr ($newEnd + ".radius") 2;
+	select -cl;
+	
+
+//now stick them to the "real" skeleton
+	parentConstraint  $joint1 $newUp;
+	parentConstraint  $joint2 $newMid;
+	parentConstraint  $joint3 $newEnd;
+	
+//and now un-constrain them
+	parentConstraint  -rm $joint1 $newUp;
+	parentConstraint  -rm $joint2 $newMid;
+	parentConstraint  -rm $joint3 $newEnd;
+	
+	select $newUp;
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+	select -cl;
+//point constrain the new upper joint to the skeleton
+	//pointConstraint $joint1 $newUp;
+
+//stupid stupid maya blend nodes
+		select $newEnd;
+		addAttr  -ln "blendOrient1" -at double -k 1 -min 0 -max 1 -dv 1;
+
+//if IK hide it	
+	if ($type == "IK")
+	{
+		string $vis = $newUp + ".visibility";
+		setAttr $vis 0;
+	}
+	else
+//if FK set it's display color
+	vstSetDisplay ($side, $newUp);
+	
+//set up the constraints to drive the real skeleton
+	string $upArmCons[] =  `orientConstraint   $newUp  $joint1`;
+//maya does not return the new attr name (and that is what we end up controlling)
+//so get the name by finding out what the last attr added to the object was
+		string $num[] = `listAttr -v $upArmCons[0]`;
+		int $size = size ($num);
+		string $upArmConsAttr = $num[($size -1)]; 
+	string $lowArmCons[] = `orientConstraint   $newMid $joint2`;
+		string $num[] = `listAttr -v $lowArmCons[0]`;
+		int $size = size ($num);
+		string $lowArmConsAttr = $num[($size -1)]; 	
+	string $wristCons[] =  `orientConstraint   $newEnd $joint3`;	
+		string $num[] = `listAttr -v $wristCons[0]`;
+		int $size = size ($num);
+		string $wristConsAttr = $num[($size -1)]; 
+ 
+ 	string $upWeight = 	$upArmCons[0] + "." + $upArmConsAttr;
+	string $lowWeight = $lowArmCons[0] + "." + $lowArmConsAttr;
+	string $wristWeight = $wristCons[0] + "." + $wristConsAttr;
+
+//hook up the constraint weights to the main ik/fk switch
+	string $switchAttr = ("main." + $side + "ArmIKFK");
+	string $visAttr = ($newUp + ".visibility");
+	int $isFK = `gmatch $newUp "*FK*"`;
+	
+	if ($isFK)
+	{
+//set up expressions to set up the FK as the opposite of the IK weight
+		string $FKupArmExp = ($upWeight + "= 1 - ("+ $switchAttr + "/10)");
+		expression -s $FKupArmExp;
+		string $FKlowArmExp = ($lowWeight + "= 1 - ("+ $switchAttr + "/10)");
+		expression -s $FKlowArmExp;
+		string $FKwristExp = ($wristWeight + "= 1 - ("+ $switchAttr + "/10)");
+		expression -s $FKwristExp;  
+//	set up visibility expressions, only show FK bones when they have a value
+		string $visExp = "if(" + $switchAttr + "==10)\r\n" + $visAttr + "=0;\r\nelse\r\n" + $visAttr + "=1;";
+		//print ($visExp + "\n");
+		expression -s $visExp;
+	}
+	else
+	{
+		string $IKupArmExp = ($upWeight + "=" + $switchAttr + "/10"); 
+		string $IKlowArmExp = ($lowWeight + "=" + $switchAttr + "/10");
+		string $IKwristExp = ($wristWeight + "=" + $switchAttr + "/10");
+		expression -s $IKupArmExp;;
+		expression -s $IKlowArmExp;
+		expression -s $IKwristExp;
+	}
+	
+	
+//set the chains neutral pose
+	select $newUp;
+	joint -e -spa -ch;
+	select -cl;
+
+//return all the new joints	
+	$dupeArm[0] = $newUp;
+	$dupeArm[1] = $newMid;
+	$dupeArm[2] = $newEnd;
+	return $dupeArm;
+	
+}

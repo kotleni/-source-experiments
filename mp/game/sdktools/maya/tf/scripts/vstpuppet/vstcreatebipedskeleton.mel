@@ -1,0 +1,61 @@
+global proc vstCreateBipedSkeleton()
+{
+	// Check for the bones set and create it if it doesn't exist.
+	// This set is for the joints that should be used for skinning - end joints are ignored in cases where they just define bone length.
+	string $boneSets = "bones";
+	if ( !`objExists $boneSets` )
+	{
+		sets -em -n $boneSets;
+	}
+
+	// spine
+	string $spineJoints[] = `vstCreateSkeletonChain "bip" spine 0`;
+
+	// clavicle
+	string $clavJoints[] = `vstCreateSkeletonChain "bip" shoulder 0`;
+	parent $clavJoints[0] $spineJoints[4];
+	delete $clavJoints[1];
+
+	// arm
+	string $armJoints[3] = `vstCreateSkeletonChain "bip" arm 0`;
+	parent $armJoints[0] $clavJoints[0];
+	
+	// fingers
+	string $finger0[] = `vstCreateSkeletonChain "bip" thumb 0`;
+	string $finger1[] = `vstCreateSkeletonChain "bip" index 0`;
+	string $finger2[] = `vstCreateSkeletonChain "bip" middle 0`;
+	string $finger3[] = `vstCreateSkeletonChain "bip" ring 0`;
+	string $finger4[] = `vstCreateSkeletonChain "bip" pinky 0`;
+	parent $finger0[0] $armJoints[2];
+	parent $finger1[0] $armJoints[2];
+	parent $finger2[0] $armJoints[2];
+	parent $finger3[0] $armJoints[2];
+	parent $finger4[0] $armJoints[2];
+
+	// mirror clavicle
+	mirrorJoint -myz -mb -sr "L" "R" $clavJoints[0];
+
+	// leg
+	string $legJoints[3] = `vstCreateSkeletonChain "bip" leg 0`;
+	
+	// foot
+	string$footJoints[3] = `vstCreateSkeletonChain "bip" foot 0`;
+	parent $footJoints[0] $legJoints[1];
+	delete $legJoints[2];
+	parent $legJoints[0] $spineJoints[0];
+
+	// mirror leg
+	mirrorJoint -myz -mb -sr "L" "R" $legJoints[0];
+
+	joint -e -spa -ch $spineJoints[0];
+
+	string $addToSet[];
+	string $bip[] = `ls "bip*"`;
+	for ( $b in $bip )
+	{
+		if ( !`gmatch $b "*End*"` )
+		{
+			sets -add $boneSets $b;
+		}
+	}
+}

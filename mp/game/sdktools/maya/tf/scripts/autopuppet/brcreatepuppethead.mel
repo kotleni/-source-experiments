@@ -1,0 +1,110 @@
+// TODO: $chestNode is unused
+global proc string[] brCreatePuppetHead (string $name, string $direction, string $chestNode, string $neckBase, string $headNode, int $numJoints)
+{
+	// clear the selection to prevent joints from being created in the wrong space
+	// building the spine in the current human leaves a group selected that will
+	// still be picked when the necks starts to be created
+	select -cl;
+
+	// create names
+	string $neckRootJoint = ($name + "_0");
+	string $headJoint = "head_joint";
+	string $neckBaseControl = ($name + "_FK_1");
+
+	// get neckBase initial location
+	float $neckBasePos[] = `getAttr ($neckBase + ".translate")`;
+	float $neckBaseRot[] = `getAttr ($neckBase + ".rotate")`;
+
+	// get head initial location
+	float $headPos[] = `getAttr ($headNode + ".translate")`;	
+	float $headRot[] = `getAttr ($headNode + ".rotate")`;
+
+	//get the initial length of the neck
+	float $dist = mag(<<$neckBasePos[0], $neckBasePos[1], $neckBasePos[2]>> - <<$headPos[0], $headPos[1], $headPos[2]>>);
+
+	//set the initial bone length
+	float $jLength = $dist / ($numJoints - 1);
+	// create skeleton joints.
+	switch ($direction) 
+	{
+		case "z":
+			// TODO: talk with bay about the z axis necks
+			error "Necks aligned to the Z axis are not supported yet.";
+			break;
+		case "y":	// fall through since the default should be on the y axis
+		default:
+			// create neck skeleton joints.
+			int $num = 0;
+			while ($num < ($numJoints))
+			{
+				// create the joints
+				string $jname = ($name + "_" + ($num));
+				if ($num == $numJoints - 1)
+				{
+					$jname = "head_joint";
+				}
+				joint -p 0 ($jLength * $num) 0 -name $jname;
+				joint -e -zso -oj xzy $jname;
+				$num++;
+			}
+			break;
+	}
+
+	// position neck joints
+	parent -r $neckRootJoint $neckBase;
+
+	// create neck FK locators
+	int $numFKCntrl = $numJoints ;
+	int $num = 1;
+	while ($num <= ($numFKCntrl - 1))
+	{
+		// create the neck FK controls
+		string $neckCont = ($name + "_FK_" + $num);
+		string $relJoint = (($name+ "_" + (($num) - 1 )));
+		createNode transform -n $neckCont;
+		setAttr ($neckCont + ".displayHandle") 1;
+		parent -r $neckCont $relJoint;
+		parent -w -a $neckCont;
+			
+		// setup the constriants
+		select -r $neckCont $relJoint;
+		connectAttr -f ($neckCont + ".rotate") ($relJoint +".rotate");
+		//connectAttr -f ($neckCont + ".translate") ($relJoint +".translate");
+		select -r $relJoint $neckCont;
+		string $Pc[] = `pointConstraint -weight 1 `;
+		parent -a $Pc[0] $name;
+		
+		if ($num > 1)
+		{
+			parent -r $neckCont (($name + "_FK_" + (($num) - 1 ))); 
+		}
+		$num++;
+	}
+
+	// orient neck and head joints
+	select -r $headNode ($name + "_FK_1");
+	$tmp = `aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 1 0 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0`;
+	delete $tmp;
+	
+	// setup the head control
+	connectAttr -f ($headNode + ".rotate") ($headJoint +".rotate");
+	setAttr ($headNode + ".displayHandle") 1;
+	parent -a $headNode ($name + "_FK_" + ($numJoints - 1));
+	
+	string $outArray[] = {
+		//$neckBase joint
+		$neckRootJoint,
+		
+		//head joint 
+		$headJoint,
+		
+		//$neckWrapper
+		$neckBase,
+		
+		// neck base control
+		$neckBaseControl
+		
+	};
+
+	return ($outArray);
+}

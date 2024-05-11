@@ -1,0 +1,54 @@
+//*****************************************
+//
+//	vstOrientControl
+//	-creates a control sphere that controls the orientation of the bone
+//
+//	use: vstOrientControl("side", "name", "bone", "parent", "offset x", "offset y" , "offset z", "radius");
+//	return: name of the control
+//
+//  by: steve/wade
+//	stevek@valvesoftware.com
+//	wade@valvesoftware.com
+//	5/18/2006
+//		-locked channels and added to plotted set
+//		-add the vstInfoAttr attributes
+//
+//******************************************
+
+global proc string vstOrientControl( string $side, string $name, string $bone, string $parent, string $axis, float $radius, float $scale, string $shape, string $lockBone, string $vstInfo ) 
+{
+	string $controlName = $side + $name;
+
+	select -cl;
+	if ( $side == "c" || $side == "C" )
+	{
+		// we dont want the middle controls being called cfkNeck, or cFKspine01
+ 		$controlName = $name;
+ 	}
+ 	
+ 	if ( $shape == "cylinder" )
+		vstMakeCylinder($axis, $radius,$controlName, $scale); 
+	else if ( $shape == "wedge" )
+		vstMakePyramid($axis, $radius,$controlName, $scale); 
+		
+	vstSetDisplay ($side, $controlName);
+	parentConstraint  $bone $controlName;
+	parentConstraint  -rm $bone $controlName;
+	select $controlName;
+
+	// zero out the rotations
+	string $zeroGroup = `vstMakeZero( $controlName )`;
+
+	orientConstraint -mo $controlName $bone;
+	pointConstraint  $bone $controlName;
+	parent $zeroGroup $parent;
+
+	// lock attributes, add to the plotted group
+	vstInfoAttr( $name, $controlName, $vstInfo );
+	vstLockAttr( $lockBone, $name, ( $name + "ZeroGroup" ) );
+	vstSelectHandle( $name, 0, 0, 0 );
+	vstHideChannels( $name, { ".tx", ".ty", ".tz", ".sx", ".sy", ".sz", ".v" } );
+	vstAddPlotted( $name );
+
+	return $controlName;
+}

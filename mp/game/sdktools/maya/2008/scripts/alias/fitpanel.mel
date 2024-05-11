@@ -1,0 +1,174 @@
+// Copyright (C) 1997-2006 Autodesk, Inc., and/or its licensors.
+// All rights reserved.
+//
+// The coded instructions, statements, computer programs, and/or related
+// material (collectively the "Data") in these files contain unpublished
+// information proprietary to Autodesk, Inc. ("Autodesk") and/or its licensors,
+// which is protected by U.S. and Canadian federal copyright law and by
+// international treaties.
+//
+// The Data is provided for use exclusively by You. You have the right to use,
+// modify, and incorporate this Data into other products for purposes authorized
+// by the Autodesk software license agreement, without fee.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. AUTODESK
+// DOES NOT MAKE AND HEREBY DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTIES
+// INCLUDING, BUT NOT LIMITED TO, THE WARRANTIES OF NON-INFRINGEMENT,
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, OR ARISING FROM A COURSE
+// OF DEALING, USAGE, OR TRADE PRACTICE. IN NO EVENT WILL AUTODESK AND/OR ITS
+// LICENSORS BE LIABLE FOR ANY LOST REVENUES, DATA, OR PROFITS, OR SPECIAL,
+// DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES, EVEN IF AUTODESK AND/OR ITS
+// LICENSORS HAS BEEN ADVISED OF THE POSSIBILITY OR PROBABILITY OF SUCH DAMAGES.
+
+
+//
+//  Creation Date:  30 July 1996
+//
+//
+//  Procedure Name:
+//      fitPanel
+//
+//  Description:
+//		Procedure to do a view fit in the pane under the
+//		pointer. Currently this script can be used on model and graph
+//		panes, and the view can be fit to either selected or all
+//		objects depending on the fitType argument.
+//
+//		Only one panel will be affected by this operation.
+//
+//  Input Arguments:
+//      fitType can be either "-all" or "-selected".
+//
+//  Return Value:
+//      None.
+//
+
+global proc fitPanel ( string $fitType )
+{
+	string $panel = `getPanel -up`;
+
+	//	Bug fix #138175. Problems arise when using the Hotbox.
+	//	The cursor may not actually be over a panel.
+	//	The fix is to do a secondary test for the panel with focus.
+	//
+	if ("" == $panel) {
+		$panel = `getPanel -withFocus`;
+	}
+
+	if ($panel != "") {
+		string $type = `getPanel -to $panel`;
+
+		if ($type == "modelPanel") {
+			// If you use animate roll
+			int $animate = 0;
+			$animate = `optionVar -q animateRoll`;
+
+			if ($fitType == "-all")
+				viewFit -all -animate $animate `lookThru -q $panel`;
+			else {
+				string $orgSel[] = `ls -sl`;
+				string $shapes[] = `listRelatives -pa -s`;
+				if( `size $shapes` ) select $shapes;
+				viewFit -animate $animate `lookThru -q $panel`;
+				if( `size $shapes` ) select $orgSel;
+			}
+		}
+		else if ($type == "hyperPanel") {
+			if ($fitType == "-all")
+				hyperGraph -e -frameGraph $panel;
+			else
+				hyperGraph -e -frame $panel;
+		}
+		else if ($type == "outlinerPanel") {
+			// It is kind of tough for the outliner to do show-all
+			// so just always do a show-selected
+			//
+			outlinerEditor -edit -showSelected true $panel;
+		}
+		else if ($type == "scriptedPanel") {
+			string $scriptedType = `scriptedPanel -q -type $panel`;
+			int $isCustom = `scriptedPanelType -q -customView $scriptedType`;
+			if ( $isCustom ) {
+				// If you use animate roll
+				int $animate = 0;
+				$animate = `optionVar -q animateRoll`;
+				if ($fitType == "-all")
+					viewFit -all -animate $animate `lookThru -q $panel`;
+				else
+					viewFit -animate $animate `lookThru -q $panel`;
+			} else {
+				switch ($scriptedType) {
+				case "graphEditor":
+					string $graphEd = ($panel+"GraphEd");
+					if ($fitType == "-all") {
+						animCurveEditor -e -lookAt all $graphEd;
+					} else {
+						animCurveEditor -e -lookAt selected $graphEd;
+					}
+					break;
+				case "hyperGraphPanel":
+					string $hyperGraphEd = ( $panel + "HyperGraphEd");
+					if ($fitType == "-all") {
+						hyperGraph -e -frameGraph $hyperGraphEd;
+					} else {
+						hyperGraph -e -frame $hyperGraphEd;
+					}
+					break;
+				case "hyperShadePanel":
+					if ($fitType == "-all") {
+						hyperShadePanelFrameAll($panel);
+					} else {
+						hyperShadePanelFrameSelected($panel);
+					}
+					break;
+				case "miInteractionEditorPanel":
+					if (`pluginInfo -q -l MayaInteractive`){
+						miInteractionEditorPanelFrame( $panel, $fitType );
+					}
+					break;
+				case "visorPanel":
+					if ($fitType == "-all") {
+						visorPanelFrameAll($panel);
+					} else {
+						visorPanelFrameSelected($panel);
+					}
+					break;
+				case "dopeSheetPanel":
+					string $dopeSheetEd = ( $panel + "DopeSheetEd" );
+					if( $fitType == "-all" ) {
+						dopeSheetEditor -edit -lookAt all $dopeSheetEd;
+					} else {
+						dopeSheetEditor -edit -lookAt selected $dopeSheetEd;
+					}
+					break;
+				case "polyTexturePlacementPanel":
+					string $texWindowEd = $panel;
+					if( $fitType == "-all" ) {
+						textureWindow -edit -frameAll $texWindowEd;
+					} else {
+						textureWindow -edit -frameSelected $texWindowEd;
+					}
+					break;
+				case "clipEditorPanel":
+					string $traxWindowEd = clipEditorNameFromPanel( $panel );
+					if( $fitType == "-all" ) {
+						clipEditor -edit -lookAt all $traxWindowEd;
+					} else {
+						clipEditor -edit -lookAt selected $traxWindowEd;
+					}
+					break;
+				case "referenceEditorPanel":
+					global string $gReferenceEditorModelEditor;
+					// If you use animate roll
+					int $animate = 0;
+					$animate = `optionVar -q animateRoll`;
+					if( $fitType == "-all" ) {
+						viewFit -all -animate $animate `lookThru -q $gReferenceEditorModelEditor`;
+					} else {
+						viewFit -animate $animate `lookThru -q $gReferenceEditorModelEditor`;
+					}
+					break;
+				}
+			}
+		}
+	}
+}

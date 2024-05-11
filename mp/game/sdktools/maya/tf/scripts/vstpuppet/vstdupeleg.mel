@@ -1,0 +1,145 @@
+//*****************************************
+//
+//	vstDupeLeg
+// 	by: steve
+//	stevek@valvesoftware.com
+//	3-07-06
+// -makes a dupliacte Leg
+// use: vstDupeLeg(side, joint1, joint2, joint3, joint 4, joint 5, type)
+// for example to make a duplicate right leg you would call this:
+// vstDupeLimb("R", "upperleg", "lowerleg", "ankle" "toe", "toe_end", "FK")
+//******************************************
+
+global proc string[] vstDupeLeg (string $side, string $joint1, string $joint2, string $joint3, string $joint4, string $joint5, string $type)
+{
+	
+	string $dupeLeg[];
+	select -cl;
+//name the new joints
+	string $newUp =  $side + $type + $joint1;
+	string $newKnee = $side + $type + $joint2;
+	string $newAnkle = $side + $type + $joint3;
+	string $newToe = $side + $type + $joint4;
+	string $newEnd= $side + $type + $joint5;
+
+//make the new joints at the origin
+	string $attr = $joint1 + ".radius";
+	float $radius = `getAttr $attr`;
+	
+	
+	joint -n $newUp;
+		setAttr ($newUp + ".radius") 2;
+	joint -n $newKnee;
+		setAttr ($newKnee + ".radius") 2;
+	joint -n $newAnkle;
+		setAttr ($newAnkle + ".radius") 2;
+	joint -n $newToe;
+		setAttr ($newToe + ".radius") 2;
+	joint -n $newEnd;
+		setAttr ($newEnd + ".radius") 2;
+	select -cl;
+	
+//now stick them to the "real" skeleton
+	parentConstraint  $joint1 $newUp;
+	parentConstraint  $joint2 $newKnee;
+	parentConstraint  $joint3 $newAnkle;
+	parentConstraint  $joint4 $newToe;
+	parentConstraint  $joint5 $newEnd;
+	
+//and now un-constrain them
+	parentConstraint  -rm $joint1 $newUp;
+	parentConstraint  -rm $joint2 $newKnee;
+	parentConstraint  -rm $joint3 $newAnkle;
+	parentConstraint  -rm $joint4 $newToe;
+	parentConstraint  -rm $joint5 $newEnd;
+	
+	select $newUp;
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+	select -cl;
+	
+//point constrain the new upper joint to the skeleton
+	//pointConstraint $joint1 $newUp;
+	
+//if IK hide it	
+	if ($type == "IK")
+	{
+		string $vis = $newUp + ".visibility";
+		setAttr $vis 0;
+	}
+	else
+//if FK set it's display color
+	vstSetDisplay ($side, $newUp);
+	
+//set up the constraints to drive the real skeleton
+	string $upLegCons[] = `orientConstraint $newUp $joint1`;
+		//get the constraint attr name
+		string $num[] = `listAttr -v $upLegCons[0]`;
+		int $size = size ($num);
+		string $upLegConsAttr = $num[($size -1)];
+	string $lowLegCons[] = `orientConstraint $newKnee $joint2`;	
+		string $num[] = `listAttr -v $lowLegCons[0]`;
+		int $size = size ($num);
+		string $lowLegConsAttr = $num[($size -1)];
+	string $footCons[] = `orientConstraint $newAnkle $joint3`;
+		string $num[] = `listAttr -v $footCons[0]`;
+		int $size = size ($num);
+		string $footConsAttr = $num[($size -1)];	 
+	string $toeCons[] = `orientConstraint $newToe $joint4`;	
+		string $num[] = `listAttr -v $toeCons[0]`;
+		int $size = size ($num);
+		string $toeConsAttr = $num[($size -1)]; 
+ 
+ 	string $upWeight = 	$upLegCons[0] + "." + $upLegConsAttr;
+	string $lowWeight = $lowLegCons[0] + "." + $lowLegConsAttr;
+	string $ankleWeight = $footCons[0] + "." + $footConsAttr;
+	string $toeWeight = $toeCons[0] + "." + $toeConsAttr;
+	
+//hook up the constraint weights to the main ik/fk switch
+	string $switchAttr = ("main." + $side + "LegIKFK");
+	string $visAttr = ($newUp + ".visibility");
+	int $isFK = `gmatch $newUp "*FK*"`;
+	
+	if ($isFK)
+	{
+//set up expressions to set up the FK as the opposite of the IK weight
+		string $FKupLegExp = ($upWeight + "= 1 - ("+ $switchAttr + "/10)");
+			expression -s $FKupLegExp;
+		string $FKlowLegExp = ($lowWeight + "= 1 - ("+ $switchAttr + "/10)");
+			expression -s $FKlowLegExp;
+		string $FKankleExp = ($ankleWeight + "= 1 - ("+ $switchAttr + "/10)");
+			expression -s $FKankleExp;  
+		string $FKtoeExp = ($toeWeight + "= 1 - ("+ $switchAttr + "/10)");
+			expression -s $FKtoeExp;  
+
+//	set up visibility expressions, only show FK bones when they have a value
+		string $visExp = "if(" + $switchAttr + "==10)\r\n" + $visAttr + "=0;\r\nelse\r\n" + $visAttr + "=1;";
+		//print ($visExp + "\n");
+		expression -s $visExp;
+	}
+	else
+	{
+		string $IKupLegExp = ($upWeight + "=" + $switchAttr + "/10"); 
+		string $IKlowLegExp = ($lowWeight + "=" + $switchAttr + "/10");
+		string $IKankleExp = ($ankleWeight + "=" + $switchAttr + "/10");
+		string $IKtoeExp = 	($toeWeight + "=" + $switchAttr + "/10");
+
+		expression -s $IKupLegExp;
+		expression -s $IKlowLegExp;
+		expression -s  $IKankleExp;
+		expression -s  $IKtoeExp;
+	}
+
+//set its neutral pose
+	select $newUp;
+	joint -e -spa -ch;
+	select -cl;
+	
+	$dupeLeg[0] = $newUp;
+	$dupeLeg[1] = $newKnee;
+	$dupeLeg[2] = $newAnkle;
+	$dupeLeg[3] = $newToe;
+	$dupeLeg[4] = $newEnd;
+
+	return $dupeLeg;
+	
+}

@@ -1,0 +1,280 @@
+// Copyright (C) 1997-2006 Autodesk, Inc., and/or its licensors.
+// All rights reserved.
+//
+// The coded instructions, statements, computer programs, and/or related
+// material (collectively the "Data") in these files contain unpublished
+// information proprietary to Autodesk, Inc. ("Autodesk") and/or its licensors,
+// which is protected by U.S. and Canadian federal copyright law and by
+// international treaties.
+//
+// The Data is provided for use exclusively by You. You have the right to use,
+// modify, and incorporate this Data into other products for purposes authorized
+// by the Autodesk software license agreement, without fee.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. AUTODESK
+// DOES NOT MAKE AND HEREBY DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTIES
+// INCLUDING, BUT NOT LIMITED TO, THE WARRANTIES OF NON-INFRINGEMENT,
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, OR ARISING FROM A COURSE
+// OF DEALING, USAGE, OR TRADE PRACTICE. IN NO EVENT WILL AUTODESK AND/OR ITS
+// LICENSORS BE LIABLE FOR ANY LOST REVENUES, DATA, OR PROFITS, OR SPECIAL,
+// DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES, EVEN IF AUTODESK AND/OR ITS
+// LICENSORS HAS BEEN ADVISED OF THE POSSIBILITY OR PROBABILITY OF SUCH DAMAGES.
+
+//
+//  Alias Script File
+//  MODIFY THIS AT YOUR OWN RISK
+//
+//  Creation Date:  December 9, 1996
+//
+//  Description:
+//      sets the users working directory depending on the type of
+//		file requested and the users preset preferences.
+//
+//  Input Arguments:
+//      String      The workspace.
+//		String		The type of file.
+//		String		The object type (eg. scene, light, etc.)
+//
+//  Return Value:
+//		The new working directory.
+//
+
+proc string dirname(string $name)
+//
+//	Description:
+//		Given a file name, return the base name
+//
+{
+	string $fname = $name;
+
+	if (`about -nt`) {
+		$fname = convert($fname);
+	}
+
+	string $leading = match("^/", $fname);
+
+	string $path[];
+	int $nTokens = tokenize($fname, "/", $path);
+
+	string $dir = $leading;
+
+	int $i;
+
+	for ($i = 0; $i < $nTokens - 1; ++$i)
+	{
+		$dir = $dir + $path[$i] + "/";
+	}
+
+	if ($dir == "")
+	{
+		$dir = ".";
+	}
+
+	return $dir;
+}
+
+global proc string setWorkingDirectory ( string $workspace, string $fileFormat, string $objectType )
+//
+//	Description:
+//		Given the file type, check the users preferences for this
+//		workspace and change to the specified directory. If an objectType
+//		is also specified, then also change to the subdirectory for
+//		object type.
+//
+//	Inputs:
+//		$workspace - the current project directory
+//		$fileFormat - mayaAscii, mayaBinary, etc.
+//		$objectType - the classification of the object, "shader", "texture/2d", etc
+//
+//	Returns:
+//		The path to the directory that we end up in.
+//
+//	Notes:
+//		The companion method for this is retainWorkingDirectory.
+//		This should be called from the browser callback.
+//
+{
+	string $pathSep = ":";
+	if (`about -nt`) {
+		$pathSep = ";";
+	}
+
+	string $foundPath;
+	string $rootDir = `workspace -q -rd $workspace`;
+	string $defaultDir = `workspace -q -rd`;
+	global string $gDirRetainingOptionVar;
+	string $ruleList[];
+
+	workspace -dir $rootDir $workspace;		// Change to the root first.
+
+	if ($fileFormat == (uiRes("m_fileOptions.kBestGuess"))) {
+		// Use the default.
+		if (`about -evalVersion`) {
+			// Personal Learning Edition
+			//
+			$fileFormat = "mayaPLE";
+		} else {
+			// Standard Maya
+			//
+		$fileFormat = "mayaBinary";
+		}
+	} else if ($fileFormat == "image") {
+		if ($objectType == "" ||
+			$objectType == "scene")
+		{
+			$objectType = "images";
+		}
+	} else if (`about -evalVersion`) {
+		if ($fileFormat == "mayaBinary" || $fileFormat == "mayaAscii") {
+			// the personal Learning Edition does not support .ma or .mb
+			//
+			$fileFormat = "mayaPLE";
+		}
+	}
+
+	string $optionVarName = "browserLocation"+$fileFormat+$objectType;
+
+	$gDirRetainingOptionVar = $optionVarName;
+
+	if ($fileFormat != "") {
+		string $fileLocations[] = `workspace -q -fr $workspace`;
+
+		int $index;
+		int $listSize = size($fileLocations);
+		int $found = false;
+		string $ruleLocation;
+
+
+		if ( $fileFormat == "mayaAscii" || $fileFormat == "mayaBinary" || $fileFormat == "mayaPLE" )
+		{
+			if ($objectType == "") {
+				$objectType = "scene";
+			}
+
+			string $curObjectRules[] = `workspace -q -ot $workspace`;
+			$listSize = size($curObjectRules);
+
+			for ($index = 0; $index < $listSize; $index+=2) {
+				if ($curObjectRules[$index] == $objectType) {
+					tokenize($curObjectRules[$index+1], $pathSep, $ruleList);
+					if (size($ruleList) > 0) {
+						$ruleLocation = $ruleList[0];
+					}
+					$found = true;
+					break;
+				}
+			}
+		} else if ($fileFormat == "image") {
+			string $curRenderRules[] = `workspace -q -rt $workspace`;
+
+			int $listSize = size($curRenderRules);
+
+			for ($index = 0; $index < $listSize; $index+=2) {
+				if ($curRenderRules[$index] == $objectType) {
+					tokenize($curRenderRules[$index+1], $pathSep, $ruleList);
+					if (size($ruleList) > 0) {
+						$ruleLocation = $ruleList[0];
+					}
+					$found = true;
+				}
+			}
+		}
+		else if( $fileFormat == "Valve VMF" ) {
+			$optionVarName = "browserLocationValveVMFscene";
+			$defaultDir = resolvePath("%VCONTENT%/%VMOD%/maps/");
+			}
+		else if( $fileFormat == "Valve MDL" ) {
+			$optionVarName = "browserLocationValveMDLscene";
+			$defaultDir = resolvePath("%VGAME%/%VMOD%/models/");
+			}
+		else if( $fileFormat == "Valve SMD" ) {
+			$optionVarName = "browserLocationValveSMDscene";
+			$defaultDir = resolvePath("%VCONTENT%/%VMOD%/models/");
+			}
+		else if( $fileFormat == "Valve DMX" ) {
+			$optionVarName = "browserLocationValveDMXscene";
+			$defaultDir = resolvePath("%VCONTENT%/%VMOD%/models/");
+			}
+		else {
+			for ($index = 0; $index < $listSize; $index+=2) {
+				if ($fileLocations[$index] == $fileFormat) {
+					tokenize($fileLocations[$index+1], $pathSep, $ruleList);
+					if (size($ruleList) > 0) {
+						$ruleLocation = $ruleList[0];
+					}
+					$found = true;
+					break;
+				}
+			}
+		}
+
+		if (size($ruleLocation) > 0) {
+			if (match("^/", $ruleLocation) == "/") {
+				// then this is an absolute path.
+				$defaultDir = $ruleLocation;
+			} else if (`about -nt` && match("^[a-zA-Z]:", $ruleLocation) != "") {
+				// this is an absolute path for windows
+				$defaultDir = $ruleLocation;
+			} else {
+				int $nChars = `size($defaultDir)`;
+				string $lastChar = `substring $defaultDir $nChars $nChars`;
+
+				if ($lastChar == "/") {
+					$defaultDir += $ruleLocation;
+				} else {
+					$defaultDir += ("/"+$ruleLocation);
+				}
+			}
+		}
+	}
+
+	print( $optionVarName +"\n"+ $defaultDir +"\n" );
+	int $setDir = false;
+	string $currentDir = $defaultDir;
+
+	if (`optionVar -exists $optionVarName`) {
+		// Set to this path.
+		$currentDir = `optionVar -q $optionVarName`;
+		if (`file -q -ex $currentDir`) {
+			if (!catch(`workspace -dir $currentDir`)) {
+				$setDir = true;
+				$defaultDir = $currentDir;
+			}
+		}
+	}
+
+	while (!$setDir)
+	{
+		if (`file -q -ex $defaultDir`) {
+			if (!catch(`workspace -dir $defaultDir`))
+			{
+				$setDir = true;
+				break;
+			}
+			else
+			{
+				if ($defaultDir == ".")
+				{
+					// The last resort failed.  There must be something
+					// wrong with workspace -dir.  But we don't want to
+					// stick the user in an infinite loop so exit anyway.
+					//
+					break;
+				}
+			}
+		}
+
+		$defaultDir = dirname($defaultDir);
+	}
+
+	if ($currentDir != $defaultDir) {
+
+		string $warnMsg =  (uiRes("m_setWorkingDirectory.kInvalidDirectoryWarn"));
+		warning(`format -s $currentDir -s $defaultDir $warnMsg`);
+	}
+
+	optionVar -sv $optionVarName $defaultDir;
+	workspace -dir $defaultDir;
+
+	$foundPath = `workspace -q -dir $workspace`;
+	return $foundPath;
+}

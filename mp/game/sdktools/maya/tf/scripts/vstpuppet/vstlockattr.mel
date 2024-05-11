@@ -1,0 +1,37 @@
+//*****************************************
+//
+//	vstLockAttr
+// 	by: stevek
+//	stevek@valvesoftware.com
+//  4/25/2006 4:40PM
+//
+// 	use: vstFKarmLock ($control, $parent);
+//
+//******************************************
+
+
+global proc string vstLockAttr (string $pivot, string $control, string $parent)
+
+{
+	string $lockGroup = `createNode "transform" -n ($control + "LockParent")`;
+
+	float $ctrlPos[] = `xform -q -t $parent`;
+	setAttr ($lockGroup + ".scalePivot")  $ctrlPos[0] $ctrlPos[1] $ctrlPos[2];
+	setAttr ($lockGroup + ".rotatePivot") $ctrlPos[0] $ctrlPos[1] $ctrlPos[2];
+
+	select -r $control;
+	addAttr -ln "lock" -at bool -k 1 -dv 0;
+
+	parent $lockGroup "main";
+	
+	orientConstraint -w 1 $parent $lockGroup;
+	string $num[] = `listConnections $lockGroup`;
+	string $orientAttr = $num[0]; 
+	print ($orientAttr + "\n");
+	string $lockExp = ($orientAttr + "." + $parent + "W0 = 1 - " +  $control  + ".lock");
+	expression -s $lockExp -n ($lockGroup + "lock");
+	pointConstraint -mo -w 1 $pivot $lockGroup;
+	parent $control $lockGroup;
+	return $lockGroup;
+	
+}

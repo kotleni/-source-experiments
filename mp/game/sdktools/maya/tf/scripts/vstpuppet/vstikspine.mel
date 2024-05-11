@@ -1,0 +1,156 @@
+//*****************************************
+//
+//	vstIKspine
+//	-takes an array of spine joints and applies stretchy IK controllers to them
+//	-sets up IK/FK switch weights
+//	-returns the new IK spine
+//
+// 	by: steve/wade
+//	stevek@valvesoftware.com
+//	wade@valvesoftware.com
+//	03/22/2006 2:22PM
+//	05/16/2006
+//		-fixed reliance on hardcoded results of the rename command, in case the scene already has a node that is named what the script expected
+//	5/18/2006
+//		-lockedchannels and added to plotted set
+//		-add the vstInfoAttr attributes
+//
+//******************************************
+
+global proc string[] vstIKspine( string $spine[], string $axis, float $radius, string $mainParent, string $chestParent, string $pelvisParent, string $vstInfo )
+{
+	// clear the selection
+	select -cl;
+
+	string $ikSpine[];
+	string $type = "ik";
+	string $switchAttr = ( $mainParent + ".spineIKFK" );
+
+	// make the new joints and align them to the original bones
+	int $num = size( $spine );
+	int $i = 0;
+	for ( $i = 0; $i < $num; $i++ )
+	{
+		$ikSpine[$i] = $spine[$i] + $type;
+		float $ikRadius = `getAttr( $spine[$i] + ".radius" )`;
+		joint -n $ikSpine[$i];
+		// scale the control bones
+		setAttr( $ikSpine[$i]+ ".radius" ) ( 2 * $ikRadius );
+		// stick em to the real bones
+		delete `parentConstraint $spine[$i] $ikSpine[$i]`;
+	}
+
+	// freeze transforms and zero everything out
+	setAttr( $ikSpine[0] + ".visibility" ) 0;
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 $ikSpine[0];
+
+	// set up the constraints and expressions to link the real spine to the FK spine
+	for ( $i = 0; $i < $num; $i++ )
+	{
+		string $spineCons[] = `parentConstraint -mo $ikSpine[$i] $spine[$i]`;
+		string $numSpineCons[] = `listAttr -v $spineCons[0]`;
+		string $spineConsAttr = $numSpineCons[( size( $numSpineCons ) -1 )];
+		string $spineWeight = $spineCons[0] + "." + $spineConsAttr;
+		connectAttr $switchAttr $spineWeight;
+	}
+	// set the display color
+	vstSetDisplay( "c", $ikSpine[0] );
+
+	// make the controllers for the stretchy spine
+	string $ikChest[] = `cylinder -r $radius -ax 0 1 0 -hr .2 -po 0 -n "ikChest"`;
+	string $ikPelvis = `createNode "transform" -n "ikPelvis"`;
+	vstSetDisplay( "c", $ikChest[0] );
+	vstDisplayExp( $ikChest[0], "spineIKFK" );
+
+	// stick the controllers to the appropriate spine joints
+	float $spine0Pos[] = `xform -q -t -ws $ikSpine[0]`;
+	setAttr( $ikPelvis + ".translate" ) $spine0Pos[0] $spine0Pos[1] $spine0Pos[2];
+	int $spineNum = size( $ikSpine );
+	int $lastOne = ( $spineNum -1 );
+	delete `parentConstraint $ikSpine[$lastOne] $ikChest[0]`;
+
+	// zero out the transforms
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 $ikChest[0];
+
+	// get the chest and pelvis positions
+	float $chestPos[] =  `getAttr ($ikChest[0] + ".translate")`;
+	float $pelvisPos[] = `getAttr ($ikSpine[0] + ".translate")`;
+
+	// now make the spline IK curve
+	// this code is modified from bay's autopuppet script (br and vstStretchspine)
+	// create IK spline
+	string $spineName = "Spine";
+	string $spineIKname = ( "ik" + $spineName );
+	string $ikSplineCurve[] = `ikHandle -sj $ikSpine[0] -ee $ikSpine[$lastOne] -sol ikSplineSolver -name $spineIKname`;
+
+	// capture the rename result in case the scene already has a node named "SpineCurve"
+	string $spineCurveName = `rename $ikSplineCurve[2] ( $spineName + "Curve" )`;
+	setAttr ( $spineIKname + ".twistType" ) 0;
+	setAttr ( $spineCurveName + ".inheritsTransform" ) 0;
+	setAttr ( $spineIKname + ".visibility" ) 0;
+
+	vstSetDisplay ( "c", $spineCurveName );
+	vstDisplayExp ( $spineCurveName, "spineIKFK" );
+
+	// create chest cluster
+	select -r ( $spineCurveName + ".cv[2]" ) ;
+	select -add ( $spineCurveName + ".cv[3]" ) ;
+	string $names[] = `cluster -envelope 1`;
+	string $chestCluster = `rename $names[1] ( $ikChest[0] + "Cluster" )`;
+	setAttr ( $chestCluster + ".rotatePivot" ) $chestPos[0] $chestPos[1] $chestPos[2];
+	setAttr ( $chestCluster + ".scalePivot" )  $chestPos[0] $chestPos[1] $chestPos[2];
+	setAttr ( $chestCluster + ".visibility" ) 0;
+
+	// create pelvis cluster
+	select -r ( $spineCurveName + ".cv[0]" ) ;
+	select -add ( $spineCurveName + ".cv[1]" ) ;
+	string $names[] = `cluster -envelope 1`;
+	string $pelvisCluster = `rename $names[1] ( $ikPelvis + "Cluster" )`;
+	setAttr ( $pelvisCluster + ".rotatePivot" ) $pelvisPos[0] $pelvisPos[1] $pelvisPos[2];
+	setAttr ( $pelvisCluster + ".scalePivot" )  $pelvisPos[0] $pelvisPos[1] $pelvisPos[2];
+	setAttr ( $pelvisCluster + ".visibility" ) 0;
+
+	// create stretchy back expressions.
+	// $spineCurveName can have some invalid characters in the name, if the rename command returns a
+	// fullpath due to a node already existing in the scene with the same name
+	string $buffer[];
+	tokenize $spineCurveName "|" $buffer;
+	string $scInfo = `createNode -name ( $buffer[size( $buffer ) -1] + "InfoNode" ) curveInfo`;
+	connectAttr ( $spineCurveName + ".worldSpace[0]" ) ( $scInfo + ".inputCurve" );
+	float $startDist = `getAttr ( $scInfo + ".arcLength" )`;
+	string $curveInfo = `arclen -ch true $spineCurveName`;
+	for ( $bone in $ikSpine )
+	{
+		string $scaleAxis = ( ".s" + $axis );
+		string $bexpr = ( $bone + $scaleAxis+ " = " + $curveInfo + ".arcLength"  + "/" + $startDist );
+		expression -s $bexpr -n "stretchyBack" ;
+	}
+
+	// setup orient IK rig for the back twist
+	parent $pelvisCluster $ikPelvis;
+	parent $chestCluster $ikChest[0];
+	parent $ikChest[0] $chestParent;
+	parent $ikPelvis $pelvisParent;
+	orientConstraint -mo $ikChest[0] $ikSpine[$lastOne];
+
+	// create twist IK expression
+	string $expLine1 = ( $spineIKname + ".twist" + " \= " + $ikChest[0] + ".ry ;\n" );
+	string $bexpr = $expLine1;
+	expression -s $bexpr -n ( $spineIKname + "Twist" );
+
+	// parent the new spine to the main parent
+	parent $ikSpine[0] $spineIKname $spineCurveName $mainParent;
+
+	for ( $i = 0; $i < size( $ikSpine ); $i++ )
+	{
+		string $ikInfoAttr = ( "ikSpine" + $i );
+		vstInfoAttr( $ikInfoAttr, $ikSpine[$i], $vstInfo );
+	}
+
+	// hide channels and add to plotted group
+	vstHideChannels ( $ikChest[0], { ".sx", ".sy", ".sz", ".v" } );
+	vstAddPlotted ( $ikChest[0] );
+
+	// all done now return the new ikSpinebones
+	return $ikSpine;
+}

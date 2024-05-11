@@ -1,0 +1,6 @@
+// script to read in a VPROJECT relative head building script that can live in the content directory.
+global proc tfBuildHead( string $vprojScript )
+{
+	string $vproject = `getenv VPROJECT`;
+	evalEcho( "source \"" + $vproject + $vprojScript + "\"" );
+}

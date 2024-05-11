@@ -1,0 +1,140 @@
+// Copyright (C) 1997-2004 Alias Systems Corp.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias license agreement, without fee.
+//
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+
+//
+// Alias Script File
+// MODIFY THIS AT YOUR OWN RISK
+//
+// Creation Date:  Nov 17 1996
+//
+//  Procedure Name:
+//      saveChanges
+//
+//  Description:
+//		Prompt the user to save changes before performing the requested
+//		action.
+//
+//  Input Arguments:
+//      ??
+//
+//  Return Value:
+//      1 = everything's groovy
+//		0 = user selected cancel from dialog
+//
+
+global proc int saveChanges ( string $saveChangeAction )
+//
+//	Description:
+//
+//
+{
+	string $fileName;
+	string $result;
+	int $returnValue = 1;
+
+	if (`file -q -amf`) {
+		$fileName = `file -q -sceneName`;
+
+		if ($fileName != "") {
+			string $confirmMessage = ("Save changes to " + $fileName + "?");
+
+			if (`about -evalVersion`) {
+				//
+				//	Determine the file extension.
+				//
+				string $extension = `match "\\..*$" $fileName`;
+				$extension = `tolower $extension`;
+				if ($extension == ".ma" || $extension == ".mb") {
+
+					//	Save the filename.
+					//
+					string $oldFilename = $fileName;
+
+					//	Strip off the "ma" or "mb" file extension, ie. the
+					//	last two characters, leaving the ".".
+					//
+					$fileName = `substring $fileName 1 (size($fileName) - 2)`;
+					//
+					//	Append on "mp", the file extension for
+					//	Maya PLE files.
+					//
+					$fileName += "mp";
+
+					//	Construct a helpful message informing the user
+					//	we will not write out an ascii or binary file.
+					//	Instead, we will write out a Maya PLE file.
+					//
+					$confirmMessage = ("Maya Personal Learning Edition is "
+						+ "unable to save Maya Ascii and Maya Binary files.\n"
+						+ "However, Maya Personal Learning Edition may save "
+						+ basename($oldFilename, "") + " as an .mp file instead.\n"
+						+ "\n"
+						+ "Save changes to " + $fileName + "?");
+				}
+			}
+
+			$result = `confirmDialog -title "Save Changes"
+				-message $confirmMessage
+				-button "Save" -button "Don't Save" -button "Cancel"
+				-defaultButton "Save"`;
+
+			if ($result == "Save") {
+				if (`about -evalVersion`) {
+					if (catch(`file -save -type "mayaPLE"`)) {
+						// There is already plenty of prompts when this happens.
+						$returnValue = 0;
+					}
+
+				} else {
+					p4_edit {$fileName} -1;
+					if (catch(`file -save`)) {
+					// There is already plenty of prompts when this happens.
+					$returnValue = 0;
+				        }
+				}
+
+			} else if ($result == "Cancel") {
+				$returnValue = 0;
+			}
+
+		} else {
+			$result = `confirmDialog -title "Warning: Scene not saved."
+				-message ("Save changes to untitled scene?")
+				-button "Save" -button "Don't Save" -button "Cancel"
+				-defaultButton "Save"`;
+			switch ($result) {
+			case "Save"			:
+				projectViewer "SaveAs";
+				$returnValue = 0;
+				break;
+			case "Don't Save"	:
+				$returnValue = 1;
+				break;
+			case "Cancel"		:
+				$returnValue = 0;
+				break;
+			}
+		}
+	}
+
+	if ($returnValue == 1) {
+		if (`pluginInfo -q -loaded "mayalive"`) {
+			if (`exists mlResetAllDeletable`)
+				mlResetAllDeletable;
+		}
+		evalEcho($saveChangeAction);
+	}
+	return $returnValue;
+}

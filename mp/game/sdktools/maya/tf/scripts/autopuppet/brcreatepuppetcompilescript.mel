@@ -1,0 +1,26 @@
+global proc int writeLocatorFile (string $directory, string $type) 
+{  
+	select -cl;
+	
+	// write out the locators.ma file for human
+	string $nulls[] = `select -r head neck chest pelvis clavicle_R shoulder_R elbow_R wrist_R clavicle_L shoulder_L elbow_L wrist_L hip_R knee_R heel_R toe_R hip_L knee_L heel_L toe_L `;
+	string $locatorFile = `file -es -type "mayaAscii" ($directory + "/locators.ma" )`;
+	
+	// copy the template file for the locator type
+	string $compileScript = ($directory + "/build_human.mel");
+	system ("copy " + "U:/dev/main/content/arttools/maya/7.0/modules/autopuppet/scripts/templates/build_human.mel" + " " + $directory );
+	
+	// replace point the script to the locator file using grp_sub.csh
+	grp_sub "PUPPETDIR" $directory $compileScript;
+
+	// source the compile script
+	evalEcho( "source \"" + $compileScript + "\"");
+	
+	return 1;
+}
+
+
+global proc brCreatePuppetCompileScript () 
+{  
+	fileBrowserDialog -m 4 -fc "writeLocatorFile " -an "Select Puppet Source Directory ";
+}

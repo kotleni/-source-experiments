@@ -1,0 +1,520 @@
+//============ Copyright (c) Valve Corporation, All rights reserved. ==========
+//
+// To opt-in to use Valve's Maya tools, simply launch whatever version of
+// Maya and then source this mel script from the location it is shipped via
+// steam.  It expects that VPROJECT is set somehow.
+//
+// !!!!! DO NOT COPY THIS SCRIPT TO A DIFFERENT DIRECTORY AND SOURCE IT. !!!!!!
+// !!!!! IT FINDS THINGS RELATIVE TO ITS EXPECTED LOCATION IN THE VALVE  !!!!!!
+// !!!!! SHIPPED SOFTWARE TREE !!!!!
+//
+//=============================================================================
+
+
+//-----------------------------------------------------------------------------
+// Returns the path to the script the specified procedure is defined
+//-----------------------------------------------------------------------------
+global proc string VGetProcPath( string $sProcName )
+{
+	string $sWhere = "";
+
+	if ( `exists $sProcName` )
+	{
+		// Use the whatIs command to determine the location.
+		string $sResult = eval( "whatIs " + $sProcName );
+
+		// Parse the human-readable form.
+		string $sTokens[];
+		int $nNumTokens = tokenize( $sResult, " ", $sTokens );
+
+		// Make sure this is a MEL script and not an internal command.
+		if ( $sTokens[0] == "Mel" )
+		{
+			// Concatenate path if it contains spaces.
+			for ( $i = 4; $i < $nNumTokens; $i++ )
+			{
+				$sWhere = $sWhere + $sTokens[$i];
+
+				if ( $i < $nNumTokens )
+				{
+					$sWhere = $sWhere + " ";
+				}
+			}
+		}
+	}
+
+	return fromNativePath( toNativePath( $sWhere ) );
+}
+
+
+//-----------------------------------------------------------------------------
+// Remove the last 4 components of the specified path
+//-----------------------------------------------------------------------------
+proc string RemoveDirsFromTail( string $sPath, int $nDirCount )
+{
+	string $sTokens[];
+	int $nNumTokens = tokenize( fromNativePath( $sPath ), "/", $sTokens );
+
+	string $sDirs[];
+	for ( $i = 0; $i < $nNumTokens - $nDirCount; $i++ )
+	{
+		$sDirs[ size( $sDirs ) ] = $sTokens[ $i ];
+	}
+
+	return stringArrayToString( $sDirs, "/" );
+}
+
+
+//-----------------------------------------------------------------------------
+// Returns the last portion of the given directory path--used to find if maya or maya_proto
+//-----------------------------------------------------------------------------
+proc string GetEndPath( string $sPath )
+{
+	string $sTokens[];
+	int $nNumTokens = tokenize( fromNativePath( $sPath ), "/", $sTokens );
+	return $sTokens[size($sTokens)-1];
+}
+
+
+//-----------------------------------------------------------------------------
+// Returns the version of Maya as a string, e.g. "2012"
+//-----------------------------------------------------------------------------
+proc string VGetMayaVersion()
+{
+	return string( int( getApplicationVersionAsFloat() ) );
+}
+
+
+//-----------------------------------------------------------------------------
+// Returns the version of Python in maya as "Major.Minor", i.e. "2.6"
+//-----------------------------------------------------------------------------
+proc string VGetPythonVersion()
+{
+	python( "import sys" );
+	string $sVersion[] = python( "sys.version_info" );
+
+	return ( $sVersion[0] + "." + $sVersion[1] );
+}
+
+
+//-----------------------------------------------------------------------------
+// Returns a string representing the operating system, e.g. "win"
+//-----------------------------------------------------------------------------
+proc string VGetOS()
+{
+	string $sOs = about( "-win" ) ? "win" : "";
+	return $sOs;
+}
+
+
+//-----------------------------------------------------------------------------
+// Returns a string representing the architecture, e.g. "64"
+//-----------------------------------------------------------------------------
+proc string VGetArch()
+{
+	string $sArch = about( "-is64" ) ? "64" : "32";
+	return $sArch;
+}
+
+
+//-----------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------
+proc string[] VGetSubDirs( string $sDir, int $bRecurse )
+{
+	string $sDirList[] = {};
+
+	if ( filetest( "-d", $sDir ) )
+	{
+		$sDirList[ size( $sDirList ) ] = $sDir;
+
+		if ( $bRecurse )
+		{
+			string $sFileList[] = getFileList( "-folder", ( $sDir + "/" ), "-filespec", "*" );
+
+			for ( $i = 0; $i < size( $sFileList ); $i++ )
+			{
+				string $sSubDirList[] = VGetSubDirs( fromNativePath( toNativePath( $sDir + "/" + $sFileList[ $i ] ) ), $bRecurse );
+				for ( $j = 0; $j < size( $sSubDirList ); $j++ )
+				{
+					$sDirList[ size( $sDirList ) ] = $sSubDirList[ $j ];
+				}
+			}
+		}
+	}
+
+	return $sDirList;
+}
+
+
+//-----------------------------------------------------------------------------
+// 
+//-----------------------------------------------------------------------------
+proc VAppendDirIfExists( string $sDstDirs[], string $sDir, int $bRecurse )
+{
+	$sDir = fromNativePath( toNativePath( $sDir ) );
+
+	if ( filetest( "-d", $sDir ) )
+	{
+		if ( $bRecurse )
+		{
+			string $sTmpDirs[] = VGetSubDirs( $sDir, $bRecurse );
+			appendStringArray( $sDstDirs, $sTmpDirs, size( $sTmpDirs ) );
+		}
+		else
+		{
+			$sDstDirs[ size( $sDstDirs ) ] = $sDir;
+		}
+	}
+}
+
+
+//-----------------------------------------------------------------------------
+//
+// Updates the specified path environment variable by prepending directories
+// that exist based on a search criteria
+//
+// $sDirEnvVar: MAYA_SCRIPT_PATH or MAYA_PLUG_IN_PATH or XBMLANGPATH
+// $sSubDir: scripts or plug-ins or icons
+// $sToolDir: d:/dev/sfm/staging/game/sdktools/maya
+// $sMayaVersion: 2012
+// $sOs: win
+// $sArch: 32
+// $bRecurse: If true, also add all subdirectories
+//
+// Paths are added in this order:
+// Most specific, <MAYA_VER>/<OS_ARCH>/<SUBDIR>
+// Slightly less specific, <MAYA_VER>/<GLOBAL>/<SUBDIR>
+// Slightly less specific without <GLOBAL>, <MAYA_VER>/<SUBDIR>
+// Even less specific <GLOBAL>/<SUBDIR>
+// Least specific, <SUBDIR>
+//
+// e.g.
+// $sDirEnvVar = MAYA_PLUG_IN_PATH
+// $sSubDir = plug-ins
+// $sMayaToolDir = 'd:/dev/sfm/game/sdktools/maya'
+// $sMayaVersion = 2012
+// $sOs = win
+// $sArch = 32
+//
+// d:/dev/sfm/game/sdktools/maya/2012/win32/plug-ins
+// d:/dev/sfm/game/sdktools/maya/2012/global/plug-ins
+// d:/dev/sfm/game/sdktools/maya/2012/plug-ins
+// d:/dev/sfm/game/sdktools/maya/global/plug-ins
+// d:/dev/sfm/game/sdktools/maya/plug-ins
+//
+//-----------------------------------------------------------------------------
+proc VUpdateMayaPath( string $sDirEnvVar, string $sSubDir, string $sMayaToolDir, string $sMayaVersion, string $sOs, string $sArch, int $bRecurse )
+{
+	string $sSrcPath = getenv( $sDirEnvVar );
+
+	if ( size( $sSrcPath ) == 0 )
+		return;
+
+	// I think the pathlist separator is different on different OS's, this is Windows specific
+	string $sPathListSep = ";";
+
+	string $sSrcDirs[] = {};
+	if ( tokenize( $sSrcPath, $sPathListSep, $sSrcDirs ) == 0 )
+		return;
+
+	string $sOsArch = $sOs + $sArch;
+	string $sGlobal = "global";
+	string $sDstDirs[] = {};
+	string $sSearchDirs[] = {};
+	string $sTmpDir;
+
+	// Most specific, <MAYA_VER>/<OS_ARCH>/<SUBDIR>
+	VAppendDirIfExists( $sDstDirs, ( $sMayaToolDir + "/" + $sMayaVersion + "/" + $sOsArch + "/" + $sSubDir ), $bRecurse );
+
+	// Slightly less specific, <MAYA_VER>/<GLOBAL>/<SUBDIR>
+	VAppendDirIfExists( $sDstDirs, ( $sMayaToolDir + "/" + $sMayaVersion + "/" + $sGlobal + "/" + $sSubDir ), $bRecurse );
+
+	// Slightly less specific without <GLOBAL>, <MAYA_VER>/<SUBDIR>
+	VAppendDirIfExists( $sDstDirs, ( $sMayaToolDir + "/" + $sMayaVersion + "/" + $sSubDir ), $bRecurse );
+
+	// Even less specific <GLOBAL>/<SUBDIR>
+	VAppendDirIfExists( $sDstDirs, ( $sMayaToolDir + "/" + $sGlobal + "/" + $sSubDir ), $bRecurse );
+
+	// Least specific, <SUBDIR>
+	VAppendDirIfExists( $sDstDirs, ( $sMayaToolDir + "/" + $sSubDir ), $bRecurse );
+
+	// Append the original list of directories to the new array of directories so new ones are first
+	appendStringArray( $sDstDirs, $sSrcDirs, size( $sSrcDirs ) );
+
+	// Set the environment variable
+	string $sEnv = stringArrayToString( $sDstDirs, $sPathListSep );
+	putenv( $sDirEnvVar, $sEnv );
+}
+
+
+//-----------------------------------------------------------------------------
+// Update Python sys.path via site.addsitedir
+// Add Maya Python site directory
+// Add Python site directory
+//-----------------------------------------------------------------------------
+proc VUpdatePythonPath( string $sMayaToolDir, string $sMayaVersion, string $sPythonVersion, string $sOs, string $sArch )
+{
+	string $sToolDir = RemoveDirsFromTail( $sMayaToolDir, 1 );
+
+	string $sMayaPythonDir = ( $sMayaToolDir + "/" + $sMayaVersion + "/" + $sOs + $sArch + "/python/lib/site-packages" );
+	if ( filetest( "-d", $sMayaPythonDir ) )
+	{
+		python( "import site; site.addsitedir( '" + $sMayaPythonDir + "' );" );
+	}
+	else
+	{
+		$sMayaPythonDir = ( $sMayaToolDir + "/python" );
+		if ( filetest( "-d", $sMayaPythonDir ) )
+		{
+			python( "import site; site.addsitedir( '" + $sMayaPythonDir + "' );" );
+		}
+	}
+
+	string $sPythonDirs[] = {
+		( $sToolDir + "/python/" + $sPythonVersion + "/" + $sOs + $sArch + "/lib/site-packages" ),
+		( $sToolDir + "/python/" + $sPythonVersion + "/Scripts" ),
+		( $sToolDir + "/python/" + $sPythonVersion + "/global/lib/site-packages" ),
+		( $sToolDir + "/python/" + $sPythonVersion + "/global/Scripts" ),
+		( $sToolDir + "/python/global/lib/site-packages" ),
+		( $sToolDir + "/python/global/Scripts" )
+	};
+
+	for ( $sPythonDir in $sPythonDirs )
+	{
+		if ( filetest( "-d", $sPythonDir ) )
+		{
+			python( "import site; site.addsitedir( '" + $sPythonDir + "' );" );
+		}
+	}
+}
+
+
+//-----------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------
+proc VPrependPath( string $sPathName, string $sPath )
+{
+	string $sSrcPath = getenv( $sPathName );
+
+	if ( size( $sSrcPath ) == 0 || size( $sPath ) == 0 )
+		return;
+
+	if ( !filetest( "-d", $sPath ) )
+	{
+		warning( "VALVe:: Prepend path \"" + $sPathName + "\" failed, path does not exist: " + $sPath + "\n" );
+	}
+
+	// I think the pathlist separator is different on different OS's, this is Windows specific
+	string $sPathListSep = ";";
+
+	string $sDirs[] = {};
+	if ( tokenize( $sSrcPath, $sPathListSep, $sDirs ) == 0 )
+		return;
+
+	string $nCount = size( $sDirs );
+	int $i;
+	for ( $i = $nCount; $i > 0; $i-- )
+	{
+		$sDirs[$i] = $sDirs[$i - 1];
+	}
+
+	$sDirs[0] = $sPath;
+
+	string $sEnv = stringArrayToString( $sDirs, $sPathListSep );
+	putenv( $sPathName, $sEnv );
+}
+
+
+//-----------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------
+proc VCheckPath( string $sVar, string $sEnv, string $sCheck, string $sScriptPath )
+{
+	if ( $sEnv == "" )
+	{
+		error( "VALVe:: " + $sVar + " not set, run vproj to set up environment\n" );
+	}
+
+	if ( tolower( $sEnv ) != tolower( $sCheck ) )
+	{
+		warning( "VALVe:: Maya Setup Script=" + $sScriptPath );
+		warning( "VALVe:: " + $sVar + "=" + $sEnv );
+		warning( "VALVe:: Expected " + $sVar + " to be \"" + $sCheck + "\" based on startup script\n" );
+	}
+}
+
+
+//-----------------------------------------------------------------------------
+// Gets the environment variable VPROJECT and validates it against where its
+// expected to be, also validates VCONTENT, VGAME, VMOD & VTOOLS based off of
+// VPROJECT to see if they're what they're expected to be as well
+// errors if any are set (which aborts the script), warns if they are not
+// exactly what's expected to be set
+//-----------------------------------------------------------------------------
+proc string VValidateVProject( string $sScriptPath )
+{
+	string $sVar = "VPROJECT";
+
+	string $sVProject = fromNativePath( toNativePath( getenv( $sVar ) ) );
+
+	if ( $sVProject == "" )
+	{
+		warning( "VALVe:: Maya Setup Script=" + $sScriptPath );
+		$sVProject = ( RemoveDirsFromTail( $sScriptPath, 4 ) + "/hl2" );
+		warning( "VALVe:: " + $sVar + " is empty, setting VPROJECT to: " + $sVProject );
+		putenv( "VPROJECT", $sVProject );
+		putenv( "VCONTENT", RemoveDirsFromTail( $sVProject, 2 ) + "/content" );
+		putenv( "VGAME", RemoveDirsFromTail( $sVProject, 1 ) );
+		putenv( "VMOD", GetEndPath( $sVProject ) );
+		putenv( "VTOOLS", RemoveDirsFromTail( $sVProject, 1 ) + "/sdktools" );
+	}
+
+	string $sEnv = RemoveDirsFromTail( $sVProject, 1 );
+	string $sCheck = RemoveDirsFromTail( $sScriptPath, 4 );
+
+	VCheckPath( $sVar, $sEnv, $sCheck, $sScriptPath );
+
+	string $sVar = "VCONTENT";
+	string $sEnv = fromNativePath( toNativePath( getenv( $sVar ) ) );
+	string $sCheck = ( RemoveDirsFromTail( $sVProject, 2 ) + "/content" );
+	VCheckPath( $sVar, $sEnv, $sCheck, $sScriptPath );
+
+	string $sVar = "VGAME";
+	string $sEnv = fromNativePath( toNativePath( getenv( $sVar ) ) );
+	string $sCheck = RemoveDirsFromTail( $sScriptPath, 4 );
+	VCheckPath( $sVar, $sEnv, $sCheck, $sScriptPath );
+
+	string $sVar = "VMOD";
+	string $sEnv = fromNativePath( toNativePath( getenv( $sVar ) ) );
+	string $sCheck = GetEndPath( $sVProject );
+	VCheckPath( $sVar, $sEnv, $sCheck, $sScriptPath );
+
+	string $sVar = "VTOOLS";
+	string $sEnv = fromNativePath( toNativePath( getenv( $sVar ) ) );
+	string $sCheck = RemoveDirsFromTail( $sScriptPath, 3 );
+	VCheckPath( $sVar, $sEnv, $sCheck, $sScriptPath );
+
+	string $sVTools = fromNativePath( toNativePath( getenv( "VTOOLS" ) ) );
+
+	// Validate the VPROJECT no matter how it was computed, i.e. ensure this
+	// script is relative 
+
+	return $sVProject;
+}
+
+
+//-----------------------------------------------------------------------------
+// See if the user is trying to use the tools on an unsupported cut of Maya
+//-----------------------------------------------------------------------------
+proc VUpdatePath( string $sScriptPath, string $sOs, string $sArch )
+{
+	//-----------------------------------------------------------------------------
+	// See if the user is trying to use the tools on an unsupported cut of Maya
+	//-----------------------------------------------------------------------------
+	if ( $sOs != "win" )
+	{
+		warning( "VALVe:: Valve maya tools are only supported on 32 bit windows versions of maya" );
+		warning( "VALVe:: This is a non-windows version of maya, many tools may not be available or will not work\n" );
+	}
+	else if ( $sArch != "32" )
+	{
+		warning( "VALVe:: maya tools are only supported on 32 bit windows versions of maya" );
+		warning( "VALVe:: This is a non 32 bit version of maya, many tools may not be available or will not work\n" );
+	}
+
+	//-----------------------------------------------------------------------------
+	// If appropriate, prepend the normal PATH environment variable with the
+	// Valve game/bin directory to find DLLs like tier0.dll, vstdlib.dll, etc...
+	// which the Valve maya plug-ins depend on.
+	//-----------------------------------------------------------------------------
+	if ( $sOs == "win" && $sArch == "32" )
+	{
+		string $sGameBinDir = ( RemoveDirsFromTail( $sScriptPath, 4 ) + "/bin" );
+
+		string $sTier0Dll = $sGameBinDir + "/tier0.dll";
+		if ( !filetest( "-r", $sTier0Dll ) )
+		{
+			warning( "VALVe:: Maya Setup Script=" + $sScriptPath );
+			warning( "VALVe:: Did not find tier0.dll here: \"" + $sTier0Dll + "\", based on startup script path, plug-ins may not function might crash" );
+		}
+
+		VPrependPath( "PATH", $sGameBinDir );
+	}
+}
+
+
+//=============================================================================
+// !!!!!!                                                                !!!!!!
+// !!!!!!                     SCRIPT STARTS HERE                         !!!!!!
+// !!!!!!                                                                !!!!!!
+//=============================================================================
+
+string $sScriptPath = VGetProcPath( "VGetProcPath" );		// The path to this mel script
+
+VValidateVProject( $sScriptPath );							// Validate VPROJECT
+
+
+//-----------------------------------------------------------------------------
+// Configuration variables
+// sMayaVersion - Version of maya -			e.g. 2012
+// sPythonVersion - Version of python -		e.g. 2.6
+// sOs - Operating system -					e.g. win
+// sArch - Architecture -					e.g. 64
+//-----------------------------------------------------------------------------
+string $sMayaVersion = VGetMayaVersion();
+string $sPythonVersion = VGetPythonVersion();
+string $sOs = VGetOS();
+string $sArch = VGetArch();
+
+
+//-----------------------------------------------------------------------------
+// Update system PATH variable
+//-----------------------------------------------------------------------------
+VUpdatePath( $sScriptPath, $sOs, $sArch );
+
+
+//-----------------------------------------------------------------------------
+// Update Maya paths, MAYA_SCRIPT_PATH, MAYA_PLUG_IN_PATH, XBMLANGPATH
+//-----------------------------------------------------------------------------
+string $sMayaToolDir = RemoveDirsFromTail( $sScriptPath, 2 );
+VUpdateMayaPath( "MAYA_SCRIPT_PATH", "scripts", $sMayaToolDir, $sMayaVersion, $sOs, $sArch, 1 );
+VUpdateMayaPath( "MAYA_PLUG_IN_PATH", "plug-ins", $sMayaToolDir, $sMayaVersion, $sOs, $sArch, 0 );
+VUpdateMayaPath( "XBMLANGPATH", "icons", $sMayaToolDir, $sMayaVersion, $sOs, $sArch, 1 );
+
+
+//-----------------------------------------------------------------------------
+// Update Python sys.path
+//-----------------------------------------------------------------------------
+VUpdatePythonPath( $sMayaToolDir, $sMayaVersion, $sPythonVersion, $sOs, $sArch );
+
+
+//-----------------------------------------------------------------------------
+// Paths have changed, rehash
+//-----------------------------------------------------------------------------
+rehash;
+
+
+//-----------------------------------------------------------------------------
+// load Valve's Maya plug-ins 
+// ----------------------------------------------------------------------------
+string $sPlugins[] = {
+	"vsMaster.mll",
+	"vstUtils.mll",
+	"PVstExportNode.py"
+};
+
+string $sPlugin = "";
+
+for ( $sPlugin in $sPlugins )
+{
+	catchQuiet( eval( "loadPlugin -qt \"" + $sPlugin + "\";" ) );
+}
+
+
+print( "\n" );
+
+
+//-----------------------------------------------------------------------------
+//                  put user defined commands below this line
+//-----------------------------------------------------------------------------

@@ -1,0 +1,37 @@
+//*****************************************
+//
+//	vstFKchain
+// 	by: steve
+//	stevek@valvesoftware.com
+//	3/27/2006 3:23PM
+// -takes an array of joints and applies FK controllers to them
+// -returns the joints made
+//******************************************
+
+global proc string[] vstFKchain (string $side,string $joints[], float $radius)
+{
+	string $fkChain[];
+	select -cl;
+	int $i;
+
+//make the new controls and align them to the original bones
+	int $num = size($joints);
+	for ($i=0; $i< ($num - 1); $i++)
+		{
+			$fkChain[$i] = ($joints[$i] + "Control");
+			vstBoneToCylinder ($joints[$i], $joints[$i+1], $radius, $fkChain[$i]);
+			delete `parentConstraint $joints[$i] $fkChain[$i]`;
+			if ($i>0)
+				parent $fkChain[$i] $fkChain[$i -1];
+		}
+
+//set up the constraints
+	for ($i=0; $i<($num -1); $i++)
+		{
+			string $jointCons[] =  `parentConstraint  -mo $fkChain[$i] $joints[$i]`;
+		}
+	
+	vstSetDisplay ($side, $fkChain[0]);
+	select -cl;
+	return $fkChain;
+}

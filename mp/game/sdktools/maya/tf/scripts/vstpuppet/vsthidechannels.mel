@@ -1,0 +1,13 @@
+//
+//
+// 4/25/2006 9:54AM
+//
+// hides channels for the chosen object
+
+global proc vstHideChannels (string $object, string $channels[])
+{
+	select $object;
+	for ($channel in $channels)
+		setAttr -k false -lock true $channel;
+	select -cl;
+}

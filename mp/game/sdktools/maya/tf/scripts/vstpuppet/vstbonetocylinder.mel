@@ -1,0 +1,24 @@
+//**************************
+//
+// vstBoneToCylinder
+//
+//**************************
+
+
+global proc string vstBoneToCylinder (string $joint1, string $joint2, float $radius, string $name)
+{
+	float $dist = vstDistance ($joint1, $joint2);
+	//what side is the joint on
+	float $direction[] = `xform -q -ws -t $joint1`;
+	if ($direction[0] < 0)
+		$move = ($dist/($radius*2));
+	else
+		$move = (-1 *($dist/($radius*2)));
+
+	cylinder -p 0 $radius 0 -ax 0 1 0 -ssw 0 -esw 360 -r $radius -hr 2 -d 3 -ut 0 -tol 0.01 -s 4 -nsp 1 -ch 0 -n $name;
+	setAttr ($name +".sy") $move;
+	select $name;
+	makeIdentity -apply true -r 0 -t 0 -s 1 -n 0;
+	delete `parentConstraint $joint1 $name`;
+	return $name;
+}

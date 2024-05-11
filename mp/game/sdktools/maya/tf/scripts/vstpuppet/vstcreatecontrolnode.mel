@@ -1,0 +1,52 @@
+proc _assignLayer(string $object, string $side)
+{	
+	switch ($side)
+	{
+		case "L":
+			if (!`objExists "L"`)
+			{
+				createDisplayLayer -name "L" -number 1 -empty;
+				setAttr L.color 14;
+			}
+			editDisplayLayerMembers L $object;
+			break;
+		case "R":
+			if (!`objExists "R"`)	
+			{
+				createDisplayLayer -name "R" -number 1 -empty;
+				setAttr R.color 13;
+			}
+			editDisplayLayerMembers R $object;
+			break;
+		case "C":
+			if (!`objExists "C"`)	
+			{
+				createDisplayLayer -name "C" -number 1 -empty;
+				setAttr C.color 15;
+			}
+			editDisplayLayerMembers C $object;
+			break;
+		default:
+			error "No layer assignment passed to _assignLayer.";
+	}
+}
+
+proc _hideAttrs(string $node)
+{
+	string $nonKeyAttrs[] = {"sx" , "sy" , "sz" , "v"};
+	for ($attr in $nonKeyAttrs ) 
+	{ 
+		setAttr -edit -keyable false ($node + "." + $attr);
+	}
+}
+
+global proc vstCreateControlNode(string $nodeName, float $posX, float $posY, float $posZ, string $creatureInfo, string $assignLayer)
+{
+	createNode transform -n $nodeName;
+	xform -t $posX $posY $posZ $nodeName;
+	addAttr -ln $nodeName -at "message" $creatureInfo ;
+	connectAttr -f ($nodeName + ".message") ( $creatureInfo + "." + $nodeName);
+	setAttr ($nodeName + ".displayHandle") 1;
+	_assignLayer $nodeName $assignLayer;
+	_hideAttrs $nodeName;
+}

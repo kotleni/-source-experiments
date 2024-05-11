@@ -1,0 +1,266 @@
+//global proc string brGetFullNameOfSelected ()
+proc string brGetFullNameOfSelected ()
+{
+	string $objs[0];
+	$objs = `ls -sl -l`;
+	return $objs[0];
+}
+
+global proc string[] brCreatePuppetArm (string $name, string $sternumNode, string $shoulderNode, string $elbowNode, string $handNode, int $numFingers, int $thumb)
+{
+	string $prefix = $name ;	
+	// Take the given nodes and prefix and generate an arm and control
+	// structure.  When finished, return the root node of the arm (in this
+	// case, the sternum joint.
+
+	// VARIABLES
+	string $sternumJoint, $shoulderJoint, $elbowJoint, $handJoint;
+	float  $sternumPos[3], $shoulderPos[3], $elbowPos[3], $handPos[3];
+
+	// first create the strings we're going to be using
+	$sternumJoint = ($prefix + "_sternumJoint");
+	$shoulderJoint = ($prefix + "_shoulderJoint");
+	$elbowJoint = ($prefix + "_elbowJoint");
+	$handJoint = ($prefix + "_handJoint");
+
+	// get the positions of the locators
+	$sternumPos = `xform -q -ws -rp  ($sternumNode )`;
+	$shoulderPos = `xform -q -ws -rp  ($shoulderNode )`;
+	$elbowPos = `xform -q -ws -rp  ($elbowNode )`;
+	$handPos = `xform -q -ws -rp  ($handNode )`;
+
+	// create the joints 
+	select -d;	
+	$sternumJoint = `joint -p $sternumPos[0] $sternumPos[1] $sternumPos[2] -n $sternumJoint`;
+	$sternumJoint = `brGetFullNameOfSelected`;
+
+	$shoulderJoint = `joint -p $shoulderPos[0] $shoulderPos[1] $shoulderPos[2] -n $shoulderJoint`;
+	$shoulderJoint = `brGetFullNameOfSelected`;
+	joint -e -zso -oj xyz $sternumJoint;
+	$elbowJoint = `joint -p $elbowPos[0] $elbowPos[1] $elbowPos[2] -n $elbowJoint`;
+	$elbowJoint = `brGetFullNameOfSelected`;
+	joint -e -zso -oj xyz $shoulderJoint;
+	
+	$handJoint = `joint -p $handPos[0] $handPos[1] $handPos[2] -n $handJoint`;
+	$handJoint = `brGetFullNameOfSelected`;
+	joint -e -zso -oj xyz $elbowJoint;
+	
+	// create the finger controls. Of course this depends on the number of
+	// controls given.. if there's one finger, it will go just straight out
+	// from the hand.  If two, then split the difference between the fingers..
+	// if three, divide evenly again.. etc.  
+	//
+
+	// The length of the hand is 1/3 the length of the forearm.
+	float $dist = mag(<<$elbowPos[0], $elbowPos[1], $elbowPos[2]>> - <<$handPos[0], $handPos[1], $handPos[2]>>);
+	float $palmLength = $dist/3.0;
+
+	// create a dummy joint to orient the hand joint correctly
+	$dup = `duplicate $handJoint`;
+	$tx = `getAttr ($dup[0] + ".tx")`;
+	$newTx = ($tx + ($palmLength));
+	setAttr ($dup[0] + ".tx") $newTx;
+	
+	parent -a $dup[0] $handJoint;	
+	joint -e -zso -oj xyz $handJoint;
+	delete $dup[0];
+	
+	//setAttr ($handJoint + ".jointOrient") -90 -90 0;
+	
+	
+	
+	// now the hand is oriented correctly.  Whew!  what a fun bit of code that was! :)
+
+	//check to see if thumb boolean is activated
+	if ($thumb > 0)
+	{
+		$numFingers = ($numFingers + 1);
+	}
+	
+	float $sep = 0.0;
+	float $start = 0.0;
+	$sep = $palmLength/$numFingers;
+	$start = -1* ($palmLength /2);
+
+	// create the fingers, if any are specified	
+	if ($numFingers > 0)
+	{
+			
+		float $sep = 0.0;
+		float $start = 0.0;
+		$sep = $palmLength/$numFingers;
+		$start = -1* ($palmLength /2);
+		$start = $start + ($sep/2);
+		for ($x = 0; $x< $numFingers; $x++)
+		{
+			//float $val =  ($start + ($sep * $x));
+			float $val;
+			$posOrNeg = `xform -q -ws -rp $handNode`;
+			if (($posOrNeg[0] < 0)  && ($thumb > 0))
+			{
+				$val =  - ($start + ($sep * $x));
+			}
+			else
+			{
+				$val =  ($start + ($sep * $x));
+			}
+			
+			string $jointName;
+			if ($thumb > 0)
+			{
+				$jointName = ($prefix + "_f"+($x));
+			}
+			else
+			{
+				$jointName = ($prefix + "_f"+($x+1));
+			}	
+			select $handJoint;
+			$fingerJoint_1 = `joint -p 0 0 0 -n ($jointName + "_1")`;
+
+			$fingerJoint_1 = `brGetFullNameOfSelected`;
+			setAttr ($fingerJoint_1 + ".t") $palmLength $val 0;
+			// next create the appropriate number of joints underneath this finger
+
+			// set the jointOrients for the main joints
+			setAttr ($fingerJoint_1 + ".jo") 90 0 90;
+
+			$dup = `duplicate $fingerJoint_1`;
+			$fingerJoint_2 = `rename $dup[0] ($jointName + "_2")`;
+			setAttr ($fingerJoint_2 + ".t") ($palmLength + $palmLength/2) $val 0;
+
+			$dup = `duplicate $fingerJoint_2`;
+			$fingerJoint_3 = `rename $dup[0] ($jointName + "_3")`;
+			setAttr ($fingerJoint_3 + ".t") ($palmLength + $palmLength/2 + $palmLength/4) $val 0;
+			$dup = `duplicate $fingerJoint_2`;
+			$fingerJoint_4 = `rename $dup[0] ($jointName + "_4")`;
+			setAttr ($fingerJoint_4 + ".t") ($palmLength + $palmLength/2 + $palmLength/2) $val 0;
+			
+			
+			// fix the stupid joint orient thing
+			//setAttr ($fingerJoint_2 + ".jo") 0 0 -180;
+
+			// now parent them correctly
+			parent -a $fingerJoint_4 $fingerJoint_3;
+			parent -a $fingerJoint_3 $fingerJoint_2;
+			parent -a $fingerJoint_2 $fingerJoint_1;
+
+			// now orient the joints
+			//joint -e -zso -oj zxy $fingerJoint_1;
+			//joint -e -zso -oj zxy $fingerJoint_2;
+			//joint -e -zso -oj zxy $fingerJoint_3;
+
+
+			// make the curl attribute for the hand
+			$attr = ("f_curl_"+($x));
+			addAttr -ln $attr -at double $handNode;
+			setAttr -k 1 ($handNode + "." + $attr);
+			
+
+//			if ($posOrNeg[0] < 0)
+//			{
+				// connect hand attrs
+				connectAttr ($handNode + "." + $attr) ($fingerJoint_1 + ".rx");
+				connectAttr ($handNode + "." + $attr) ($fingerJoint_2 + ".rx");
+				connectAttr ($handNode + "." + $attr) ($fingerJoint_3 + ".rx");	
+//			}
+//			else
+//			{
+//				// create a reverse node
+//				$node = `createNode reverse -n ($jointName + "_rev")`;
+//				connectAttr ($handNode + "." + $attr) ($node + ".inputX");
+//				connectAttr ($node + ".outputX") ($fingerJoint_1 + ".rx");
+//				connectAttr ($node + ".outputX") ($fingerJoint_2 + ".rx");
+//				connectAttr ($node + ".outputX") ($fingerJoint_3 + ".rx");	
+			//}
+		}
+	}
+	
+	if ($thumb > 0)
+	{
+		string $thumbJoint_1 = ($prefix + "_f0_1");
+		
+		// determine whether or not to reverse the rotation based on if the hand is negative 
+		// in X or positive in X
+		$posOrNeg = `xform -q -ws -rp $handNode`;
+		if ($posOrNeg[0] < 0)
+		{
+			//setAttr ($thumbJoint_1 + ".jointOrientZ") 120;
+			setAttr ($thumbJoint_1 + ".jointOrient") -90 -75 -60;
+			move -r -ls (-($sep)*2) (($sep)/2) (-($sep)) $thumbJoint_1;
+			
+			// create a reverse node
+			$attr = ("f_curl_0");
+			$node = `createNode reverse -n ($thumbJoint_1 + "_rev")`;
+			connectAttr -f ($handNode + "." + $attr) ($node + ".inputX");
+			connectAttr -f ($node + ".outputX") (($prefix + "_f0_1") + ".rx");
+			connectAttr -f ($node + ".outputX") (($prefix + "_f0_2") + ".rx");
+			connectAttr -f ($node + ".outputX") (($prefix + "_f0_3") + ".rx");			
+		}
+		else
+		{
+
+			setAttr ($thumbJoint_1 + ".jointOrient") 90 -75 60;
+			move -r -ls (-($sep)*2) (-($sep)/2) (-($sep)) $thumbJoint_1;
+		}
+		//setAttr ($thumbJoint_1 + ".jointOrientX") 120;	
+		// move -r -ls (-($sep)*2) 0 (-($sep)) $thumbJoint_1;
+	}
+	
+	// orient constrain the hand to the wrist control
+	// but first orient the hand control
+	select $handJoint $handNode;
+	$con = `orientConstraint`;
+	delete $con;
+	
+	select $handNode $handJoint;
+	orientConstraint;
+	/*$dup = `duplicate $handJoint`;
+	$handJointConst = `rename ($dup[0]) ($handJoint + "_orient")`;
+	delete `listRelatives -f -c $handJointConst`;
+
+	select $handJointConst $handJoint;
+	orientConstraint;
+
+	parent $handJointConst $handNode;
+	hide $handJointConst;
+	*/
+
+	// create an ikHandle 
+	$ikHandle = `ikHandle -sol "ikRPsolver" -sj $shoulderJoint -ee $handJoint -n ($prefix + "_arm_ikHandle")`;
+	string $armIkHandle = $ikHandle[0];
+
+	$ikHandle = `ikHandle -sol "ikSCsolver" -sj $sternumJoint -ee $shoulderJoint -n ($prefix + "_clav_ikHandle")`;
+	string $clavIkHandle = $ikHandle[0];
+
+	// create a poleVectorConstraint
+	select $elbowNode $armIkHandle;
+	poleVectorConstraint;
+
+	// constrain everything correctly
+	select $handNode $armIkHandle;
+	pointConstraint;
+
+	select $shoulderNode $clavIkHandle;
+	pointConstraint;orientConstraint;
+
+	select $sternumNode $sternumJoint;
+	pointConstraint;
+
+	// hide everything unnecessary
+	string $stuff[] = {
+		(""+$armIkHandle+""),
+		(""+$clavIkHandle+"")
+	};
+	//brLock $stuff;
+	brHideUnnecessary $stuff;
+
+	string $outArray[] = {
+		$sternumJoint,
+		$sternumNode,
+		$shoulderNode
+	};
+	print "::: arm created  \!\! \n";
+	return ($outArray);
+	
+	
+}

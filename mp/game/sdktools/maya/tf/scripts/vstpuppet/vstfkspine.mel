@@ -1,0 +1,86 @@
+//*****************************************
+//
+//	vstFKspine
+// -takes an array of spine joints and applies FK controllers to them
+// -sets up IK FK switch weights
+// -returns the new FK spine
+//
+// 	by: steve/wade
+//	stevek@valvesoftware.com
+//	wade@valvesoftware.com
+//	3/22/2006
+//	5/18/2006
+//		-passed in the vstInfo node so that channels can be locked/hidden/added to plotted
+//
+//******************************************
+
+global proc string[] vstFKspine ( string $spine[], string $axis, float $radius, float $scale, string $parent, string $vstInfo )
+{
+	string $FKspine[];
+	string $zeroGroup[];
+	string $switchAttr = ( "main." + "spineIKFK" );
+
+	int $num = size( $spine );
+	int $i;
+	for ( $i = 0; $i < $num; $i++ )
+	{
+		$FKspine[$i] = ( $spine[$i] + "FKcontrol" );
+		// bring in the pyramid control object
+		vstMakePyramid( $axis, $radius,$FKspine[$i], $scale ); 
+		// and stick it to the spine
+		delete `parentConstraint -w 1 $spine[$i] $FKspine[$i]`;
+		// set their default manipulator to rotate
+		select -r $FKspine[$i];
+		setAttr .showManipDefault 2;
+		if ( $i > 0 )
+		{
+			parent $FKspine[$i] $FKspine[( $i -1 )];
+		}
+		$zeroGroup[$i] = `vstMakeZero( $FKspine[$i] )`;
+	}
+	//freeze transforms 
+	//select -r $FKspine[0];
+	parent $zeroGroup[0] $parent;
+
+	select -cl;
+
+	string $switchAttr = ( "main." + "spineIKFK" );
+	// set up the constraints and expressions
+	for ( $i = 0; $i < $num; $i++ )
+	{
+		string $spineCons[] = `parentConstraint -mo $FKspine[$i] $spine[$i]`;
+		string $num[] = `listAttr -v $spineCons[0]`;
+		int $size = size ($num);
+		string $spineConsAttr = $num[( $size -1 )]; 
+		string $spineWeight = $spineCons[0] + "." + $spineConsAttr;
+		string $spineExp = ( $spineWeight + "= 1 - "+ $switchAttr );
+		expression -s $spineExp -n "FKspineExp";
+	}
+
+	// add a stretch spine attr to the first FK spine joint
+	addAttr -ln "stretchSpine" -at double -k 1 -min .1 -max 2 -dv 1 $FKspine[0];
+
+	// connect this attr to the spines y scale (this will stretch the FK spine)
+	string $spineStretch = ( $FKspine[0] + ".stretchSpine" ) ;
+	string $spineY = ( $FKspine[0] + ".scaleY" ) ;
+	connectAttr $spineStretch $spineY ;
+
+	// add the vstInfo attributes
+	for ( $i = 0; $i < size( $FKspine ); $i++ )
+	{
+		string $fkInfoAttr = ( "fkSpine" + $i );
+		vstInfoAttr( $fkInfoAttr, $FKspine[$i], $vstInfo );
+		
+		if ($i == 0 )
+		{
+			vstDisplayExp( $FKspine[0], "spineIKFK" );
+		}
+
+		vstHideChannels( $FKspine[$i], { ".tx", ".ty", ".tz", ".sx", ".sy", ".sz", ".v" } );
+		vstSelectHandle( $FKspine[$i], 0, 0, 0 );
+		vstAddPlotted( $FKspine[$i] );
+	}
+
+
+	return $FKspine;
+}

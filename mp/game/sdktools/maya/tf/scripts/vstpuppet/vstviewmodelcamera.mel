@@ -1,0 +1,20 @@
+global proc vstViewModelCamera()
+{
+	string $cam[] = `camera`;
+	string $cameraName = `rename $cam[0] "viewmodel"`;
+	setAttr ( $cameraName + ".ry" ) 180;
+	setAttr ( $cameraName + ".focalLength" ) 54;
+	setAttr ( $cameraName + ".displayResolution" ) 1;
+	camera -e -overscan 1.3 $cameraName;
+	
+	setAttr -lock true ( $cameraName + ".tx" );
+	setAttr -lock true ( $cameraName + ".ty" );
+	setAttr -lock true ( $cameraName + ".tz" );
+	setAttr -lock true ( $cameraName + ".rx" );
+	setAttr -lock true ( $cameraName + ".ry" );
+	setAttr -lock true ( $cameraName + ".rz" );
+	setAttr -lock true ( $cameraName + ".sx" );
+	setAttr -lock true ( $cameraName + ".sy" );
+	setAttr -lock true ( $cameraName + ".sz" );
+	setAttr ( $cameraName + ".visibility" ) 0;
+}

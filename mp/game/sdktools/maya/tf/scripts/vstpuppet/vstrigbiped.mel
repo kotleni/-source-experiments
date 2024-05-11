@@ -1,0 +1,159 @@
+//*****************************************
+//
+//	vstRigBiped
+// by: steve/wade
+//	stevek@valvesoftware.com
+//	wade@valvesoftware.com
+//	04-12-06
+//
+// usage: vstRigBiped $namespace;
+//		$namespace - string to use as the reference namespace. Pass in "" if there is no reference.
+//
+//******************************************
+
+global proc string vstRigBiped( string $namespace, string $infoNode )
+{
+	// define what some of the rig objects will be called
+	string $vstInfo = ( $namespace + $infoNode );
+
+	string $main = "main";
+	string $pelvisControl = "PelvisControl";
+	string $upperBodyControl = "UpperbodyControl";
+	string $handControl = "ikHandControl";
+	string $elbowControl = "ElbowControl";
+	string $kneeControl = "kneeControl";
+	string $shoulderControl = "ShoulderControl";
+
+	string $footControl = "FootControl";
+	string $toeControl = "ToeControl";
+
+	string $bipPelvis = ( $namespace + "bip_pelvis" );
+	string $bipSpine0 = ( $namespace + "bip_spine_0" );
+	string $bipSpine1 = ( $namespace + "bip_spine_1" );
+	string $bipSpine2 = ( $namespace + "bip_spine_2" );
+	string $bipSpine3 = ( $namespace + "bip_spine_3" );
+	string $bipNeck =   ( $namespace + "bip_neck" );
+	string $bipHead =   ( $namespace + "bip_head" );
+
+	// these are channel names that we hide on controls that don't need them
+	string $scale[] = { ".sx", ".sy", ".sz" };
+	string $translation[] = { ".tx", ".ty", ".tz" };
+	string $rotation[] = { ".rx", ".ry", ".rz" };
+	string $vis[] = { ".v" };
+	// fyi this is the bone radius
+	string $rad[] = { ".radius" };
+
+
+	// make the main control
+	// this is the parent to the entire rig - it currently stores the IKFK switches as well
+	print ( "*\n* Making main control\n*------------------------\n" );
+	// get the distance between the two legs to figure out the size of the circle controls
+	string $bipUpLegL = ( $namespace + "bip_hip_L" );
+	string $bipUpLegR = ( $namespace + "bip_hip_R" );
+	float $radius = vstDistance( $bipUpLegL, $bipUpLegR );
+	float $mainRadius = ( $radius * 2 );
+	// create the main control
+	// TODO: should vastMakeMain return the name of the control in case there is an object named "main" already in the scene?
+	vstMakeMain( $main, $mainRadius, $vstInfo );
+	// add the plotted group to the vstInfo node
+	vstInfoAttr( "plotted", "plotted", $vstInfo );
+
+
+	print ( "*\n* Making Upperbody Control\n*------------------------\n" );
+	vstUpperBodyControl( $upperBodyControl, $bipPelvis, $main, $radius, 0.25, "y", $vstInfo );
+
+
+	print ( "*\n* Making Pelvis Control\n*------------------------\n" );
+	vstPelvisControl( $pelvisControl, $bipPelvis, ($radius/1.5), $upperBodyControl, 1.5, "y", $vstInfo );
+
+
+	print ( "*\n* Making FK Spine\n*------------------------\n" );
+	// pass it an array of bones to work with
+	string $bipSpineBones[] = { $bipSpine0, $bipSpine1, $bipSpine2, $bipSpine3 };
+	string $fkSpine[] = vstFKspine( $bipSpineBones, "z", 5, .25, $upperBodyControl, $vstInfo );
+
+
+	print ( "*\n* Making IK Spine\n*------------------------\n" );
+	string $ikSpine[] = vstIKspine( $bipSpineBones, "y", 15, $main, $upperBodyControl, $pelvisControl, $vstInfo );
+	// make the chest parent node
+	// this node controls the upper body and stays between the two spines
+	string $chestParent = vstChestParent( "chestParent", $main, $bipSpineBones, $fkSpine, $ikSpine, $vstInfo );
+	vstMultiParent( $chestParent, $fkSpine[3], $ikSpine[3], "main.spineIKFK" );
+
+
+	print ( "*\n*Rigging the Head/Neck\n*------------------------\n" );
+	string $rigNeckControl = vstOrientControl( "c", "neckControl", $bipNeck, $chestParent, "z",4, .25, "wedge", $bipSpine3, $vstInfo );
+	string $rigHeadControl = vstOrientControl( "c", "headControl", $bipHead, $rigNeckControl, "z", 3, .25, "wedge", $bipNeck, $vstInfo );
+
+
+	// do all the right/left controls
+	string $sides[] = { "L", "R" };
+	for ( $side in $sides )
+	{
+		// now define the skeleton
+		string $bipCollar = ( $namespace + "bip_collar_" + $side );
+		string $bipUpArm =  ( $namespace + "bip_upperArm_" + $side );
+		string $bipLowArm = ( $namespace + "bip_lowerArm_" + $side );
+		string $bipHand =   ( $namespace + "bip_hand_" + $side);
+
+		string $bipUpLeg =  ( $namespace + "bip_hip_" + $side );
+		string $bipLowLeg = ( $namespace + "bip_knee_" + $side );
+		string $bipFoot =   ( $namespace + "bip_foot_" + $side );
+		string $bipToe =    ( $namespace + "bip_toe_" + $side );
+		string $bipToeEnd = ( $namespace + "bip_toeEnd_" + $side );
+
+		string $bipLegBones[] = { $bipUpLeg, $bipLowLeg, $bipFoot, $bipToe, $bipToeEnd };
+		string $bipShoulderBones[] = { $bipCollar, $bipUpArm };
+		string $bipArmBones[] = {$bipUpArm, $bipLowArm, $bipHand};
+
+		// some of the scripts expect the "r" or "l" instead of "R" "L"
+		string $sideLower = `tolower( $side )`;
+
+
+		print ( "*\n*Rigging Shoulders: " + $side + "\n*------------------------\n" );
+		string $rigShoulderControl = vstShoulder( $sideLower, $shoulderControl, $bipShoulderBones, $chestParent,  4.5, $vstInfo );
+
+
+		print ( "*\n*Rigging Arms: " + $side + "\n*------------------------\n" );
+		string $rigFKarm[] = vstDupeFKarm( $sideLower, $bipArmBones, $rigShoulderControl, 4.5, $vstInfo );
+		string $rigIKarm[] = vstDupeIKarm( $sideLower, $bipArmBones, $main, $vstInfo );
+		// make the IK handle/control
+		string $IKhandle = vstIK( $rigIKarm[0], $rigIKarm[2], $main );
+		string $IKcontrol = vstIKhandControl( $sideLower, $IKhandle, $handControl, $main, 4, $bipHand, $bipLowArm, $vstInfo );
+		// set up the FK controls
+		string $FKelbow[] = `listConnections( $vstInfo + "." + $sideLower + "FKelbow" )`;
+		string $ElbowControl = vstPoleControl( $sideLower, $elbowControl, $FKelbow[0], $bipHand, $IKhandle, $main, $vstInfo );
+
+
+		print ( "*\n*Adding Hand Control: " + $side + "\n*------------------------\n" );
+		string $fingerNames[] = { ( $namespace + "bip_thumb" ), ( $namespace + "bip_index" ), ( $namespace + "bip_middle" ), ( $namespace + "bip_ring" ), ( $namespace + "bip_pinky" ) };
+		string $fingerControl[] = vstFingerControl( $side, $fingerNames, $bipHand, ".rx", 3, 2, $main, $rigFKarm[2], $IKcontrol );
+//		string $fingerControl[] = vstHandControl( $side, $fingerNames, $bipHand, ".rx", 3, 2, $main, $rigFKarm[2], $IKcontrol );
+
+
+		//make the duplicate legs
+		print ( "*\n*Rigging Legs\n*------------------------\n" );
+		string $IKleg[] = vstDupeIKleg( $sideLower, $bipLegBones, $upperBodyControl, 4, $vstInfo );
+		string $FKleg[] = vstDupeFKleg( $sideLower, $bipLegBones, $upperBodyControl, 4, $vstInfo );
+
+
+		print ( "*\n*Rigging Feet\n*------------------------\n" );
+		string $ReverseFoot[] = vstReverseFoot( $sideLower, $IKleg[2], $IKleg[3], $IKleg[4] );
+		//set up all the fun IK handles
+		//and parent them to the reverse foot
+		string $AnkleIK = vstIK ( $IKleg[0], $IKleg[2], $ReverseFoot[7] );
+		string $BallIK = vstIK ( $IKleg[2], $IKleg[3], $ReverseFoot[5] );
+		string $ToeIK = vstIK ( $IKleg[3], $IKleg[4], $ReverseFoot[9] );
+		//and pole vectors
+		string $KneeControl = vstPoleControl( $sideLower, $kneeControl, $IKleg[1], $IKleg[2], $AnkleIK, $main, $vstInfo );
+		//make the contol boxes
+		string $FootControl[] = vstFootControl( $sideLower, "FootControl", $bipFoot, $bipToe, $footControl, $toeControl, $ReverseFoot, $main, $BallIK, $vstInfo );
+	}
+
+	// do prop bones here
+
+	print ( "*\nDone with Biped Rig.\n**************************\n" );
+	select -cl;
+
+	return $vstInfo;
+}

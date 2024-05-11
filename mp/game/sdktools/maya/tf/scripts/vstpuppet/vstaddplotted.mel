@@ -1,0 +1,14 @@
+
+// 5/4/2006 5:45PM
+// steveK
+// adds object to the plotted group
+
+global proc vstAddPlotted(string $object)
+{
+	string $plotted = "plotted";
+	string $exists = `objExists $plotted`;
+	if ($exists == 0)
+		sets -em -n $plotted;
+	//now add the object to plotted
+	sets -in $plotted $object;
+}

@@ -1,0 +1,98 @@
+// add braces to keep all the variables in the proper scope so they won't become global
+{
+	// create the puppetInfoNode
+	string $creatureInfo = "AP_ValveBiped" ;
+	createNode transform -n  $creatureInfo ;
+
+	vstCreateControlNode "head" 	0.000000		64.58778463	-0.7726155078	$creatureInfo "C";
+	vstCreateControlNode "neck"		0.000000		61.57054944	-2.740023906	$creatureInfo "C";
+	vstCreateControlNode "chest"	0.000000		58.31281308	-3.304975452	$creatureInfo "C";
+	vstCreateControlNode "pelvis"	0.000000		38.566914		0.533611		$creatureInfo "C";
+
+	vstCreateControlNode "clavicle_L"	1.937666105	60.17495918	-1.989526222 	$creatureInfo "L";
+	vstCreateControlNode "shoulder_L"	7.723857305	58.48458585	-1.956160068 	$creatureInfo "L";
+	vstCreateControlNode "elbow_L"		15.26443086	49.56528913	-2.505446467 	$creatureInfo "L";
+	vstCreateControlNode "wrist_L"		22.67650053	40.79794177	-2.351857854 	$creatureInfo "L";
+	vstCreateControlNode "hip_L"		3.890447		38.566914		0.533611 		$creatureInfo "L";
+	vstCreateControlNode "knee_L"		3.983530152	20.74295394	-0.3912008348 	$creatureInfo "L";
+	vstCreateControlNode "heel_L"		4.06951078	4.279049121	-1.811258707 	$creatureInfo "L";
+	vstCreateControlNode "toe_L"		4.369810688	0.4837695131	3.918712825 	$creatureInfo "L";
+
+	vstCreateControlNode "clavicle_R"	-1.937666105	60.17495918	-1.989526222 	$creatureInfo "R";
+	vstCreateControlNode "shoulder_R"	-7.723857305	58.48458585	-1.956160068 	$creatureInfo "R";
+	vstCreateControlNode "elbow_R"		-15.26443086	49.56528913	-2.505446467 	$creatureInfo "R";
+	vstCreateControlNode "wrist_R"		-22.67650053	40.79794177 	-2.351857854 	$creatureInfo "R";
+	vstCreateControlNode "hip_R"		-3.890447		38.566914		0.533611 		$creatureInfo "R";
+	vstCreateControlNode "knee_R"		-3.983530152	20.74295394	-0.3912008348 	$creatureInfo "R";
+	vstCreateControlNode "heel_R"		-4.06951078	4.279049121	-1.811258707 	$creatureInfo "R";
+	vstCreateControlNode "toe_R"		-4.369810688	0.4837695131	3.918712825 	$creatureInfo "R";
+
+	vstCreateControlNode "Finger0_L" 22.09201071 39.0444723 -0.890633294 $creatureInfo "L" ;
+	vstCreateControlNode "Finger01_L" 22.09201071 37.77901471 -0.160021014 $creatureInfo "L";
+	vstCreateControlNode "Finger02_L" 22.09201071 37.14628591 0.205285126 $creatureInfo "L";
+	setAttr Finger0_L.ry -90;
+	parent Finger02_L Finger01_L;
+	parent Finger01_L Finger0_L;
+
+	vstCreateControlNode "Finger1_L" 22.67650053 37.87549265 -1.76736803 $creatureInfo "L";
+	vstCreateControlNode "Finger11_L" 22.67650053 36.41426809 -1.76736803 $creatureInfo "L";
+	vstCreateControlNode "Finger12_L" 22.67650053 35.68365581 -1.76736803 $creatureInfo "L";
+	parent Finger12_L Finger11_L;
+	parent Finger11_L Finger1_L;
+
+	vstCreateControlNode "Finger2_L" 22.67650053 37.87549265 -2.351857854 $creatureInfo "L";
+	vstCreateControlNode "Finger21_L" 22.67650053 36.41426809 -2.351857854 $creatureInfo "L";
+	vstCreateControlNode "Finger22_L" 22.67650053 35.68365581 -2.351857854 $creatureInfo "L";
+	parent Finger22_L Finger21_L;
+	parent Finger21_L Finger2_L;
+
+	vstCreateControlNode "Finger3_L" 22.67650053 37.87549265 -2.936347678 $creatureInfo "L";
+	vstCreateControlNode "Finger31_L" 22.67650053 36.41426809 -2.936347678 $creatureInfo "L";
+	vstCreateControlNode "Finger32_L" 22.67650053 35.68365581 -2.936347678 $creatureInfo "L";
+	parent Finger32_L Finger31_L;
+	parent Finger31_L Finger3_L;
+
+	vstCreateControlNode "Finger4_L" 22.67650053 37.87549265 -3.520837502 $creatureInfo "L";
+	vstCreateControlNode "Finger41_L" 22.67650053 36.41426809 -3.520837502 $creatureInfo "L";
+	vstCreateControlNode "Finger42_L" 22.67650053 35.68365581 -3.520837502 $creatureInfo "L";
+	parent Finger42_L Finger41_L;
+	parent Finger41_L Finger4_L;
+
+	parent Finger0_L Finger1_L Finger2_L Finger3_L Finger4_L wrist_L;
+
+
+	vstCreateControlNode "Finger0_R" -22.09201071 39.0444723 -0.890633294 $creatureInfo "R" ;
+	vstCreateControlNode "Finger01_R" -22.09201071 37.77901471 -0.160021014 $creatureInfo "R";
+	vstCreateControlNode "Finger02_R" -22.09201071 37.14628591 0.205285126 $creatureInfo "R";
+	parent Finger02_R Finger01_R;
+	parent Finger01_R Finger0_R;
+
+	vstCreateControlNode "Finger1_R" -22.67650053 37.87549265 -1.76736803 $creatureInfo "R";
+	vstCreateControlNode "Finger11_R" -22.67650053 36.41426809 -1.76736803 $creatureInfo "R";
+	vstCreateControlNode "Finger12_R" -22.67650053 35.68365581 -1.76736803 $creatureInfo "R";
+	parent Finger12_R Finger11_R;
+	parent Finger11_R Finger1_R;
+
+	vstCreateControlNode "Finger2_R" -22.67650053 37.87549265 -2.351857854 $creatureInfo "R";
+	vstCreateControlNode "Finger21_R" -22.67650053 36.41426809 -2.351857854 $creatureInfo "R";
+	vstCreateControlNode "Finger22_R" -22.67650053 35.68365581 -2.351857854 $creatureInfo "R";
+	parent Finger22_R Finger21_R;
+	parent Finger21_R Finger2_R;
+
+	vstCreateControlNode "Finger3_R" -22.67650053 37.87549265 -2.936347678 $creatureInfo "R";
+	vstCreateControlNode "Finger31_R" -22.67650053 36.41426809 -2.936347678 $creatureInfo "R";
+	vstCreateControlNode "Finger32_R" -22.67650053 35.68365581 -2.936347678 $creatureInfo "R";
+	parent Finger32_R Finger31_R;
+	parent Finger31_R Finger3_R;
+
+	vstCreateControlNode "Finger4_R" -22.67650053 37.87549265 -3.520837502 $creatureInfo "R";
+	vstCreateControlNode "Finger41_R" -22.67650053 36.41426809 -3.520837502 $creatureInfo "R";
+	vstCreateControlNode "Finger42_R" -22.67650053 35.68365581 -3.520837502 $creatureInfo "R";
+	parent Finger42_R Finger41_R;
+	parent Finger41_R Finger4_R;
+
+	parent Finger0_R Finger1_R Finger2_R Finger3_R Finger4_R wrist_R;
+	
+	print "locators sourced.\n";
+
+}

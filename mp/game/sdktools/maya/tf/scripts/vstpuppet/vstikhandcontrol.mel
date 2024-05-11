@@ -1,0 +1,89 @@
+//*****************************************
+//
+//	vstIKhandControl
+//	-makes a sphere that controls an IK handle
+//
+//	use: vstIKhandControl(side, IKhandle, controlname, endbone, pelvisControl, 2, vstInfo)
+//
+//	by: steve/wade
+//	stevek@valvesoftware.com
+//	wade@valvesoftware.com
+//	5/18/2006
+//		-passed in the vstInfo node so that channels can be locked/hidden/added to plotted
+//
+//******************************************
+
+global proc string vstIKhandControl( string $side, string $IKhandle, string $name, string $parent, int $radius, string $bone, string $aim, string $vstInfo )
+{
+	string $sphereName = $side + $name;
+	sphere -r $radius -d 1 -s 4 -nsp 3 -name $sphereName -ch 0 -po 0;
+	select $sphereName;
+	select $sphereName;
+	string $rotateX = ( $sphereName + ".rotateX" );
+	setAttr $rotateX -45;
+	makeIdentity -apply true -r 1 -t 0 -s 0 -n 0;
+
+	addAttr -ln "lock" -at double -k 1 -min 0 -max 1 -dv 0;
+	addAttr -ln "aim" -at double -k 1 -min 0 -max 1 -dv 1;
+
+	vstSetDisplay ($side, $sphereName);
+	delete `pointConstraint $bone $sphereName`;
+	delete `orientConstraint $bone $sphereName`;
+
+	pointConstraint  $sphereName $IKhandle;
+	//parent $sphereName $parent;
+	//ok now we have to do something funky
+	//we want to be able to toggle the parent of the control so we can efectively "lock" it in space
+
+	$groupName = ($sphereName + "Group");
+	string $group = `group -n $groupName $sphereName`;
+	parent $group $parent;
+
+	string $aimCons[] = `orientConstraint -mo $aim $sphereName`;
+
+	if ( `gmatch $aim "*:*"` )
+	{
+		string $buffer[];
+		// Capture the number of tokens, and take the last one.
+		// This should work for nested namespaces - previously $buffer[0] was just taken and used.
+		int $numTokens = `tokenize $aim  ":"  $buffer`;
+		$aim = $buffer[$numTokens -1];
+	}
+	string $aimWeight = ( $aimCons[0] + "." + $aim + "W0" );
+	connectAttr ( $sphereName + ".aim" ) $aimWeight;
+
+	string $parCons[] = `parentConstraint -mo "UpperbodyControl" $group`;
+	//check and see what the new attr is called
+	string $lockExp = ( $parCons[0] + ".UpperbodyControlW0 = 1 - " +  $sphereName + ".lock" );
+	expression -s $lockExp -n ( $sphereName + "lockExp" );
+
+	//ok we need to make one more group this is the one we attach to weapons
+	$wepGroupName = ( $sphereName + "WeaponGroup" );
+	string $wepGroup = `group -n $wepGroupName $sphereName`;
+	//snap everything to the right place
+	delete `pointConstraint $group $wepGroup`;
+	delete `pointConstraint $wepGroup $sphereName`;
+
+	// zero out the hand control - this needs to be done after the weapon group was added
+	// this is similar to the vstMakeZero command, but for translation instead of rotation
+	string $zeroGroup = `group -n ($sphereName + "ZeroGroup") $sphereName`;
+	float $pos[] = `getAttr ($sphereName + ".translate")`;
+	setAttr ( $zeroGroup + ".tx" ) $pos[0];
+	setAttr ( $zeroGroup + ".ty" ) $pos[1];
+	setAttr ( $zeroGroup + ".tz" ) $pos[2];
+	setAttr ( $sphereName + ".tx" ) 0;
+	setAttr ( $sphereName + ".ty" ) 0;
+	setAttr ( $sphereName + ".tz" ) 0;
+
+	vstInfoAttr( ( $side + "IKcontrol" ), $sphereName, $vstInfo );
+	vstInfoAttr( ( $side + "WeaponAttach" ), $wepGroup, $vstInfo );
+
+	vstDisplayExp( $sphereName, ( $side + "ArmIKFK" ) );
+	vstHideChannels( $sphereName, { ".rx", ".ry", ".rz", ".sx", ".sy", ".sz", ".v" } );
+	vstSelectHandle( $sphereName, 0, 0, 0 );
+	vstAddPlotted( $sphereName );
+
+
+	return $sphereName;
+
+}

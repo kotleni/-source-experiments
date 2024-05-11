@@ -1,0 +1,61 @@
+global proc string vstWriteLocatorFile(string $directory)
+{  
+	select -cl;
+	
+	string $buf[] = `ls "AP_*"`;
+	string $puppetInfo = $buf[0];
+	string $bufA[]; 
+	tokenize ($puppetInfo, "_", $bufA);
+	string $creatureType = $bufA[1];
+
+	// write out the script to recreate the locators.	
+	string $locatorScript = ($directory + "/locators.mel");
+	vstPuppetNulls -w $locatorScript;
+	
+	return $creatureType;
+}
+
+global proc int vstWriteLocatorFileThenCompile(string $directory)
+{  
+	select -cl;
+	
+	string $creatureType = `vstWriteLocatorFile $directory`;
+	
+	// source the compile script
+	string $templateDir = `vstGetTemplateDir`;
+	$compileScript = ($templateDir + "build_" + $creatureType + ".mel");
+	evalEcho( "source \"" + $compileScript + "\"");
+	
+	// frame viewport.
+	select -all; fitAllPanels -selected;  select -cl;
+	
+	return 1;
+	
+}
+
+global proc vstAutoPuppetCompile(string $flag) 
+{  
+	switch ($flag)
+	{
+		case "-loc":
+			fileBrowserDialog -m 1 -fc "vstWriteLocatorFile " -an "Select Directory To Write Locator File";
+			break;
+
+		case "-dbs":
+			fileBrowserDialog -m 4 -fc "vstWriteLocatorFileThenCompile" -an "Select Directory For Puppet Database";
+			break;
+
+		case "-tmp":
+		default:
+			string $tmpDir = "c:/temp/autoPuppet_scratch";
+			if (!`filetest -d $tmpDir`)
+			{
+				string $nativeTmpDir = toNativePath($tmpDir);
+				system ("mkdir " + $nativeTmpDir);
+			}
+
+			putenv "PUPPET_DIR" $tmpDir;
+			vstWriteLocatorFileThenCompile $tmpDir;
+			break;
+	}
+}

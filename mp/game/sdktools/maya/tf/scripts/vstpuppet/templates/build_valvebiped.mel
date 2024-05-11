@@ -1,0 +1,108 @@
+// add braces to keep all the variables in the proper scope so they won't become global
+{
+	// get the control nodes
+	string $head_cntrl        = `vstQueryControl head`;
+	string $neck_cntrl        = `vstQueryControl neck`;
+	string $chest_cntrl       = `vstQueryControl chest`;
+	string $pelvis_cntrl      = `vstQueryControl pelvis`;
+
+	string $clavicle_R_cntrl  = `vstQueryControl clavicle_R`;
+	string $shoulder_R_cntrl  = `vstQueryControl shoulder_R`;
+	string $elbow_R_cntrl     = `vstQueryControl elbow_R`;
+	string $wrist_R_cntrl     = `vstQueryControl wrist_R`;
+	string $hip_R_cntrl       = `vstQueryControl hip_R`;
+	string $knee_R_cntrl      = `vstQueryControl knee_R`;
+	string $heel_R_cntrl      = `vstQueryControl heel_R`;
+	string $toe_R_cntrl       = `vstQueryControl toe_R`;
+
+	string $clavicle_L_cntrl  = `vstQueryControl clavicle_L`;
+	string $shoulder_L_cntrl  = `vstQueryControl shoulder_L`;
+	string $elbow_L_cntrl     = `vstQueryControl elbow_L`;
+	string $wrist_L_cntrl     = `vstQueryControl wrist_L`;
+	string $hip_L_cntrl       = `vstQueryControl hip_L`;
+	string $knee_L_cntrl      = `vstQueryControl knee_L`;
+	string $heel_L_cntrl      = `vstQueryControl heel_L`;
+	string $toe_L_cntrl       = `vstQueryControl toe_L`;
+
+	///////////////////////////////////////////
+	// create the individual puppet objects
+	///////////////////////////////////////////
+
+	// create arms
+	string $arm_L[] = `vstCreatePuppetArm "L" $clavicle_L_cntrl $shoulder_L_cntrl $elbow_L_cntrl $wrist_L_cntrl 4 1`;
+	string $arm_R[] = `vstCreatePuppetArm "R" $clavicle_R_cntrl $shoulder_R_cntrl $elbow_R_cntrl $wrist_R_cntrl 4 1`;
+	string $jArmRoot_L = $arm_L[0];
+	string $jArmSternum_L = $arm_L[1];
+	string $jArmShoulder_L = $arm_L[2];
+	string $jArmWrist_L = $arm_L[3];
+
+	string $jArmRoot_R = $arm_R[0];
+	string $jArmSternum_R = $arm_R[1];
+	string $jArmShoulder_R = $arm_R[2];
+	string $jArmWrist_R = $arm_R[3];
+
+
+	vstCreatePuppetHand $jArmWrist_L $wrist_L_cntrl;
+	vstCreatePuppetHand $jArmWrist_R $wrist_R_cntrl;
+
+	// create legs
+	string $leg_L[] = `vstCreatePuppetLeg "L" $hip_L_cntrl $knee_L_cntrl $heel_L_cntrl $toe_L_cntrl `;
+	string $leg_R[] = `vstCreatePuppetLeg "R" $hip_R_cntrl $knee_R_cntrl $heel_R_cntrl $toe_R_cntrl `;
+	string $jLegRoot_L = $leg_L[0];
+	string $jLegRoot_R = $leg_R[0];
+	string $jLegHip_L = $leg_L[1];
+	string $jLegHip_R = $leg_R[1];
+
+	// create spine
+	string $spine[] = `vstCreatePuppetSpine "Bip01_Spine" y $pelvis_cntrl $chest_cntrl 4`;
+	string $jSpineRoot = $spine[0];
+	string $jSpineChest = $spine[1];
+	string $spineGroup = $spine[2];
+	string $spineChestWrapper = $spine[3];
+	string $spinePelvisWrapper = $spine[4];
+
+	// create head and neck
+	string $head[] = `vstCreatePuppetHead "Bip01_Neck" y $neck_cntrl $head_cntrl 2`;
+	string $jNeck = $head[0];
+	string $neckGroup = $head[1];
+	string $neckHeadControls = $head[2];
+
+	// parent joints appropriately
+	parent -a $jNeck $jSpineChest;
+	parent -a $jArmRoot_L $jArmRoot_R $jSpineChest;
+	parent -a $jLegRoot_L $jLegRoot_R $jSpineRoot;
+
+	///////////////////////////////////////////
+	// organize the locators
+	///////////////////////////////////////////
+
+	// parent unused positioner controls under the chest and pelvis wrappers
+	parent -a $hip_L_cntrl $hip_R_cntrl $spinePelvisWrapper;
+	parent -a $shoulder_L_cntrl $shoulder_R_cntrl $neck_cntrl $spineChestWrapper;
+
+	// parent head to the chest
+	parent -a $neckHeadControls $chest_cntrl;
+
+	// parent the clavicles and elbow pole vectors to the chest
+	parent -a $clavicle_L_cntrl $clavicle_R_cntrl $elbow_L_cntrl $elbow_R_cntrl $chest_cntrl;
+
+	// parent the knee pole vectors to the feet
+	parent -a  $knee_L_cntrl $heel_L_cntrl;
+	parent -a  $knee_R_cntrl $heel_R_cntrl;
+
+	// hide locators that have become positioners
+	hide $hip_L_cntrl $hip_R_cntrl $shoulder_L_cntrl $shoulder_R_cntrl $neck_cntrl;
+
+	// get the AP_puppetInfo node
+	string $buf[] = `ls "AP_*"`;
+	string $puppetInfoNode = $buf[0];
+
+	// group the rig to make it all purdy.
+	parent -a $spineGroup $neckGroup dontLookAtMe $puppetInfoNode;
+	setAttr ( $jSpineChest + ".drawStyle") 1;
+	setAttr ( $jSpineRoot  + ".drawStyle") 1;
+
+	// print success
+	print ":::::::::::::::::::::::::::::::::::::: \n";
+	print "::: CREATURE rig successfully created \!\! \n";
+}

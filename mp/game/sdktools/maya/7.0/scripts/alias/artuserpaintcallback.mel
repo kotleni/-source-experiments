@@ -1,0 +1,108 @@
+// Copyright (C) 1997-2004 Alias Systems Corp.
+// 
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias license agreement, without fee.
+// 
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+
+//
+//
+//
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+//
+
+
+
+// Script Paint Tool UI script 
+//
+global proc artUserPaintSetupCallback( 
+	string $jasperCommand 
+)
+{
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -tsc \"#1\" `currentCtx`")
+		toolSetupTextField;
+
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -tcc \"#1\" `currentCtx`")
+		toolCleanupTextField;
+
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -gsc \"#1\" `currentCtx`")
+		getSrfTextField;
+
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -ic \"#1\" `currentCtx`")
+		initTextField; 
+
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -fc \"#1\" `currentCtx`")
+		finalizeTextField; 
+
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -svc \"#1\" `currentCtx`")
+		setValueTextField; 
+
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -gvc \"#1\" `currentCtx`")
+		getValueTextField; 
+
+	textFieldGrp -e
+		-cc ($jasperCommand + " -e -gac \"#1\" `currentCtx`")
+		getArrayAttrTextField; 
+
+	checkBoxGrp -e
+		-cc1 ($jasperCommand + " -e -fp #1 `currentCtx`")
+		fullPathsChkBox;
+}
+// =======================================================
+// Main Procedure.
+// =======================================================
+
+global proc artUserPaintCallback(
+	string	$artCommand
+)
+{
+	{
+		int $override = 0;
+		catchQuiet( $override = vst_artUserPaintCallback( $artCommand ) );
+		if ( $override )
+			return;
+	}
+
+	source "artisanCallback.mel";
+	source "artAttrCallback.mel";
+
+	string $currContext = `currentCtx`;
+	string $currTool	= `contextInfo -c $currContext`;
+
+	// Basic Brush frameLayout.
+	artisanBrushCallback( $artCommand, $currTool );
+	
+	// Define the common callbacks.
+	artAttrCommonCallback( $artCommand, $currTool );
+
+	// Stroke frameLayout.
+	artisanStrokeCallback( $artCommand, $currTool );
+
+	// Stroke frameLayout.
+	artisanPressureCallback( $artCommand, $currTool );
+
+	// Attribute Maps frameLayout.
+	artisanAttrMapCallback( $artCommand, $currTool );
+
+	// Display frameLayout.
+	artisanDisplayCallback( $artCommand, $currTool );
+	
+	artUserPaintSetupCallback($artCommand);
+}
+

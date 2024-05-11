@@ -1,0 +1,38 @@
+//*****************************************
+//
+//	vstRigHead
+// by: steve
+//	stevek@valvesoftware.com
+//
+// sets up controls on the head bone that allow the neck to follow the orientation 
+// of the chest bone, or be independent of it
+//
+// use: vstRigHead ($neck, $head, $swtich);
+//
+//******************************************
+
+
+global proc string [] vstRigHead (string $neck, string $head, string $headEnd, string $spine03, string $parent, string $axis, float $radius, float $scale) 
+
+{
+	select -cl;
+	string $headControl[];
+	string $fkNeck = ($neck + "Control");
+	string $fkHead = ($head + "Control");
+	
+	$headControl = {$fkNeck, $fkHead};
+		for ($controls in $headControl)
+	{ 
+		vstMakePyramid ($axis, $radius,$controls, $scale); 
+	}
+	
+	vstSetDisplay ("c", $fkNeck);
+	vstSetDisplay ("c", $fkHead);
+	parent $fkHead $fkNeck;
+	vstFKarmLock ($head, $fkHead, $fkNeck);
+
+	
+
+	return $headControl;
+	
+}

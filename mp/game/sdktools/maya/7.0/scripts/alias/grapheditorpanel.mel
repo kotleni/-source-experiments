@@ -1,0 +1,1364 @@
+// Copyright (C) 1997-2004 Alias Systems Corp.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias license agreement, without fee.
+//
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+
+//
+//  Alias Script File
+//  MODIFY THIS AT YOUR OWN RISK
+//
+//  Creation Date:  June 26, 1996
+//
+//  Description:
+//      This script a panel which has both an outliner and a graph editor
+//	within it.
+//
+//  Input Arguments:
+//      None.
+//
+//  Return Value:
+//      None.
+//
+
+proc setOptionVars ()
+{
+	// autoFit
+	if (!`optionVar -exists graphEditorAutoFit`) {
+		optionVar -intValue graphEditorAutoFit 0;
+	}
+
+	//	clipTime
+	if (!`optionVar -exists graphEditorClipTime`) {
+		optionVar -intValue graphEditorClipTime 1;
+	}
+}
+
+// *********************************************
+// Start of all menu creation procedures
+// *********************************************
+
+global proc buildGraphEdViewMenu (string $graphEd, string $parentMenu)
+//
+//  Procedure Name:
+//      GraphEdViewMenu
+//
+//  Description:
+//		This creates submenu items for view
+//		functionality in the graph editor.
+//
+//  Input Arguments:
+//      None.
+//
+//  Return Value:
+//      None.
+//
+{
+	setParent -menu $parentMenu;
+	// Check to see if we have to build the menu items
+	//
+	if (`menu -query -numberOfItems $parentMenu` == 0) {
+		menuItem -label "Clip Time"
+			-checkBox false
+			-annotation ("Clip Time: Display clip curves in their Trax location rather than their originally keyed location.")
+			-command (
+				"animCurveEditor -edit -clipTime #1 " + $graphEd + ";" +
+				"optionVar -intValue graphEditorClipTime #1;"
+			)
+			clipTimeItem;
+
+		menuItem -divider true;
+
+		menuItem -label "Frame All"
+			-annotation "Frame All Curves"
+			-command ("FrameAll");
+		menuItem -label "Frame Selection"
+			-annotation "Frame Selected Curves"
+			-command ("FrameSelected");
+		menuItem -label "Frame Playback Range"
+			-annotation "Frame the Playback Range"
+			-command (
+				"animView " +
+				"-startTime (`playbackOptions -query -minTime` - 1) " +
+				"-endTime (`playbackOptions -query -maxTime` + 1) " +
+				 $graphEd
+			);
+		menuItem -label "Center Current Time"
+			-annotation "Center the view about the current time"
+			-command ("animCurveEditor -edit -lookAt currentTime " + $graphEd);
+
+		menuItem -divider true;
+
+		menuItem -label "Auto Frame"
+			-checkBox false
+			-annotation "Auto Frame: As selection changes, reframe the selected curves."
+			-command (
+				"animCurveEditor -edit -autoFit #1 " + $graphEd + ";" +
+				"optionVar -intValue graphEditorAutoFit #1;"
+			)
+			displayAutoFitItem;
+
+		menuItem -label "Show Results"
+			-checkBox false
+			-annotation "Show Results: Display a graphic representation of an expression or other non-keyed action."
+			-command ("if (#1) performShowResults 0 " + $graphEd + "; else animCurveEditor -edit -showResults #1 " + $graphEd + ";")
+			showResultsItem;
+		menuItem -optionBox true
+			-label "Show Results Option Box"
+			-command ("performShowResults 1 " + $graphEd)
+			showResultsOptionsItem;
+		menuItem -label "Show Buffer Curves"
+			-checkBox false
+			-annotation "Show Buffer Curves: Display the original shape of edited curves."
+			-command ("animCurveEditor -edit -showBufferCurves #1 " + $graphEd)
+			showBuffersItem;
+
+		menuItem -divider true;
+
+		menuItem -label "Keys" -subMenu true -tearOff true
+			displayKeyframeMenu;
+
+			radioMenuItemCollection;
+			menuItem -label "Always"
+				-annotation "Keys: Always display keys"
+				-radioButton 1	displayKeyAlwaysItem;
+			menuItem -label "Never"
+				-annotation "Keys: Never display keys"
+				-radioButton 0 displayKeyNeverItem;
+			menuItem -label "Active Only"
+				-annotation "Keys: Only display keys on active curves."
+				-radioButton 0 displayKeyActiveItem;
+
+			setParent -m ..;
+
+		string $tangentMenu = `menuItem -label "Tangents" -subMenu true
+			-tearOff true displayTangentMenu`;
+
+			radioMenuItemCollection;
+			menuItem -label "Always"
+				-radioButton 1
+				-annotation "Tangents: Always Display"
+				-command ("animCurveEditor -edit -displayTangents true " +
+						  "-displayActiveKeyTangents false " + $graphEd)
+				displayTangentAlwaysItem;
+			menuItem -label "Never"
+				-radioButton 0
+				-annotation "Tangents: Never Display"
+				-command ("animCurveEditor -edit -displayTangents false " +
+						  "-displayActiveKeyTangents false " + $graphEd)
+				displayTangentNeverItem;
+			menuItem -label "On Active Keys"
+				-radioButton 0
+				-annotation "Tangents: Only display tangents on active curves."
+				-command ("animCurveEditor -edit -displayTangents false " +
+						  "-displayActiveKeyTangents true " + $graphEd)
+				displayTangentActiveItem;
+
+			setParent -m ..;
+
+		// Now that we know the name of the Tangent Menu, we can
+		// disable it when we're not showing keyframes
+		//
+		menuItem -e
+			-command ("menuItem -e -enable true " + $tangentMenu + "; " +
+					  "animCurveEditor -edit -displayKeys true " +
+					  "-displayActiveKeys false " + $graphEd)
+			displayKeyAlwaysItem;
+
+		menuItem -e
+			-command ("menuItem -e -enable false " + $tangentMenu + "; " +
+					  "animCurveEditor -edit -displayKeys false " +
+					  "-displayActiveKeys false " + $graphEd)
+			displayKeyNeverItem;
+
+		menuItem -e
+			-command ("menuItem -e -enable true " + $tangentMenu + "; " +
+					  "animCurveEditor -edit -displayKeys false " +
+					  "-displayActiveKeys true " + $graphEd)
+			displayKeyActiveItem;
+
+		menuItem -label "Infinity"
+			-checkBox false
+			-annotation "Infinities: Display Infinities"
+			-command ("animCurveEditor -edit -displayInfinities #1 " + $graphEd)
+			displayInfinityItem;
+	}
+
+	int $clipTimeOptVar = `optionVar -q graphEditorClipTime`;
+	int $graphEdClipTimeState =
+		(`animCurveEditor -q -clipTime $graphEd` == "on" ? 1 : 0);
+	menuItem -edit
+		-checkBox $clipTimeOptVar
+		clipTimeItem;
+
+	if ($clipTimeOptVar != $graphEdClipTimeState) {
+		animCurveEditor -e -clipTime $clipTimeOptVar $graphEd;
+	}
+
+	menuItem -edit
+		-checkBox `animCurveEditor -query -autoFit $graphEd`
+		displayAutoFitItem;
+
+	string $result = `animCurveEditor -query -showResults $graphEd`;
+	menuItem -edit
+		-checkBox ($result == "on" ? 1 : 0)
+		showResultsItem;
+
+	$result = `animCurveEditor -query -showBufferCurves $graphEd`;
+	menuItem -edit
+		-checkBox ($result == "on" ? 1 : 0)
+		showBuffersItem;
+
+	// Disable if can't show keyframes
+	//
+
+	menuItem -edit -enable (`animCurveEditor -q -displayKeys $graphEd` ||
+							`animCurveEditor -q -displayActiveKeys $graphEd`)
+		displayTangentMenu;
+
+	// Make sure the right radio button is pressed: Keyframe menu
+	//
+	if( `animCurveEditor -query -displayActiveKeys $graphEd` == 1 ) {
+		menuItem -edit -radioButton off displayKeyAlwaysItem;
+		menuItem -edit -radioButton on  displayKeyActiveItem;
+		menuItem -edit -radioButton off displayKeyNeverItem;
+	} else if( `animCurveEditor -query -displayKeys $graphEd` == 1 ) {
+		menuItem -edit -radioButton on  displayKeyAlwaysItem;
+		menuItem -edit -radioButton off displayKeyActiveItem;
+		menuItem -edit -radioButton off displayKeyNeverItem;
+	} else {
+		menuItem -edit -radioButton off displayKeyAlwaysItem;
+		menuItem -edit -radioButton off displayKeyActiveItem;
+		menuItem -edit -radioButton on  displayKeyNeverItem;
+	}
+
+	// Make sure the right radio button is pressed: Tangent menu
+	//
+	if( `animCurveEditor -query -displayActiveKeyTangents $graphEd` == 1 ) {
+		menuItem -edit -radioButton off displayTangentAlwaysItem;
+		menuItem -edit -radioButton on  displayTangentActiveItem;
+		menuItem -edit -radioButton off displayTangentNeverItem;
+	} else if( `animCurveEditor -query -displayTangents $graphEd` == 1 ) {
+		menuItem -edit -radioButton on  displayTangentAlwaysItem;
+		menuItem -edit -radioButton off displayTangentActiveItem;
+		menuItem -edit -radioButton off displayTangentNeverItem;
+	} else {
+		menuItem -edit -radioButton off displayTangentAlwaysItem;
+		menuItem -edit -radioButton off displayTangentActiveItem;
+		menuItem -edit -radioButton on  displayTangentNeverItem;
+	}
+
+	menuItem -edit
+		-checkBox `animCurveEditor -query -displayInfinities $graphEd`
+		displayInfinityItem;
+}
+
+global proc graphSnap (string $state, string $graphEd)
+//
+// Sets the snapping state for the graph editor
+//
+{
+	switch ($state) {
+	case "none":
+		animCurveEditor -edit -snapTime "none" $graphEd;
+		animCurveEditor -edit -snapValue "none" $graphEd;
+		break;
+	case "time":
+		animCurveEditor -edit -snapTime "integer" $graphEd;
+		animCurveEditor -edit -snapValue "none" $graphEd;
+		break;
+	case "value":
+		animCurveEditor -edit -snapTime "none" $graphEd;
+		animCurveEditor -edit -snapValue "integer" $graphEd;
+		break;
+	case "both":
+		animCurveEditor -edit -snapTime "integer" $graphEd;
+		animCurveEditor -edit -snapValue "integer" $graphEd;
+		break;
+	}
+}
+
+global proc doBuffer (string $options)
+//
+//	Procedure Name:
+//		doBuffer
+//
+//	Description:
+//		This proc handles the buffer curve buttons.
+//
+//  Input Arguments:
+//		string $options			Options for this proc
+//			Current options:
+//				snapshot		Create a buffer curve
+//				swap			Swap buffer curves
+//
+//  Return Value:
+//      None.
+//
+{
+	int $keys = 0;
+	$keys = `keyframe -selected -query -keyframeCount`;
+	switch ($options) {
+	case "snapshot":
+		if ($keys == 0) {
+			warning ("No keys selected to create buffer curve(s)");
+		}
+		else {
+			bufferCurve -animation keys -overwrite true;
+		}
+		break;
+	case "swap":
+		if ($keys == 0) {
+			warning ("No keys selected to swap buffer curve(s)");
+		}
+		else {
+			bufferCurve -animation keys -swap;
+		}
+		break;
+	}
+}
+
+global proc updateGraphEdSelectMenu( string $parent )
+//
+// Description:
+//	Make sure all the check boxes are properly ticked
+//
+{
+	setParent -m $parent;
+	menuItem -e -cb `selectType -q -animCurve` selCurveItem;
+	menuItem -e -cb `selectType -q -animKeyframe` selKeyframeItem;
+	menuItem -e -cb `selectType -q -animInTangent` selInTanItem;
+	menuItem -e -cb `selectType -q -animOutTangent`	selOutTanItem;
+}
+
+global proc buildGraphEdSelectMenu()
+//
+//  Procedure Name:
+//      GraphEdOptionsMenu
+//
+//  Description:
+//		This proc creates menu entries
+//		that control certain editing operations
+//		in the graph editor.
+//
+//  Input Arguments:
+//      None.
+//
+//  Return Value:
+//      None.
+//
+{
+	menuItem -label "All"
+		-annotation ("All: Enable selection of curves, keys, and tangents.")
+		-c ("selectType -animCurve true -animKeyframe true -animBreakdown true " +
+			"-animInTangent true -animOutTangent true") selAnyItem;
+	menuItem -label "Only Curve"
+		-annotation ("All: Enable selection of curves only.")
+		-c ("selectType -animCurve true -animKeyframe false -animBreakdown false " +
+			"-animInTangent false -animOutTangent false") selOnlyCurve;
+
+	menuItem -divider true;
+	menuItem -label "Curve"
+		-annotation "Curve: Control whether curves are selectable."
+		-cb yes -c "selectType -animCurve #1"
+		selCurveItem;
+	menuItem -label "Key" -cb yes
+		-annotation "Key: Control whether keys are selectable."
+		-c "selectType -animKeyframe #1 -animBreakdown #1"
+		selKeyframeItem;
+	menuItem -label "In Tangent"
+		-annotation "In Tangent: Control whether in tangents are selectable."
+		-cb yes -c "selectType -animInTangent #1"
+		selInTanItem;
+	menuItem -label "Out Tangent"
+		-annotation "Out Tangent: Control whether out tangents are selectable."
+		-cb yes -c "selectType -animOutTangent #1"
+		selOutTanItem;
+}
+
+
+global proc buildGraphEdKeysMenu(string $outlineEd, string $graphEd, string $parentMenu )
+//
+//  Procedure Name:
+//      buildGraphEdKeysMenu
+//
+//  Description:
+//		This creates menu entries that control
+//		tangent weight locking, and tangent breaking
+//		and unifying
+//
+//  Input Arguments:
+//      None.
+//
+//  Return Value:
+//      None.
+//
+{
+	setParent -menu $parentMenu;
+	if (`menu -query -numberOfItems $parentMenu` != 0) {
+		return;
+	}
+
+	string $selectionConnection = `editor -query -selectionConnection $outlineEd`;
+
+	menuItem -label "Break Tangents"
+		-annotation "Break Tangents: Select key(s)"
+		-command ("doKeyTangent \"-lock off\" " + $selectionConnection + " noOptions")
+		breakTanItem;
+	menuItem -label "Unify Tangents"
+		-annotation "Unify Tangents: Select key(s)"
+		-command ("doKeyTangent \"-lock on\" " + $selectionConnection + " noOptions")
+		unifyTanItem;
+
+	menuItem -divider true;
+
+	menuItem -label "Lock Tangent Weight"
+		-annotation "Lock Tangent Weight: Select key(s)"
+		-command ("doKeyTangent \"-weightLock on\" " + $selectionConnection + " noOptions")
+		tanWeightLockItem;
+	menuItem -label "Free Tangent Weight"
+		-annotation "Free Tangent Weight: Select key(s)"
+		-command ("doKeyTangent \"-weightLock off\" " + $selectionConnection + " noOptions")
+		tanWeightFreeItem;
+
+	menuItem -divider true;
+
+	menuItem -label "Convert to Key"
+		-annotation ("Convert to Key: Select breakdown")
+		-command ("doKeyEdit \"-breakdown false\" " + $selectionConnection + " noOptions")
+		makeKeysItem;
+	menuItem -label "Convert to Breakdown"
+		-annotation ("Convert to Breakdown: Select key")
+		-command ("doKeyEdit \"-breakdown true\" " + $selectionConnection + " noOptions")
+		makeBreakdownsItem;
+
+	menuItem -label "Add Inbetween"
+		-annotation "Add an inbetween at the current time."
+		-command ("doKeyEdit \"\" " + $graphEd + " \"bufferCurve addInbetween\"")
+		addInbetweenItem;
+	menuItem -label "Remove Inbetween"
+		-annotation "Remove an inbetween at the current time."
+		-command ("doKeyEdit \"\" " + $graphEd + " \"bufferCurve removeInbetween\"")
+		removeInbetweenItem;
+
+	menuItem -label "Mute Key On"
+		-annotation "Mute Key: Select keys"
+        -command ("doMuteKey -true")
+		muteChannelItem;
+
+	menuItem -label "Mute Key Off"
+		-annotation "Unmute Key: Select keys"
+        -command ("doMuteKey  -false")
+        unmuteChannelItem;
+
+}
+
+global proc GraphEditorMenu( string $graphEd, string $outlineEd, string $widgetList[])
+//
+//  Alias Script File
+//  MODIFY THIS AT YOUR OWN RISK
+//
+//  Creation Date:  June 14, 1996
+//
+//  Description:
+//      This script creates popup menu items for the graph editor.
+//
+//  Input Arguments:
+//      The graph editor that the menu will belong to.
+//
+//  Return Value:
+//      None.
+//
+{
+	// Load in the common menu elements library
+	//
+	loadAnimMenuLibrary;
+
+	popupMenu
+		-ctrlModifier false
+		-button 3
+		-allowOptionBoxes false
+		-parent $graphEd
+		($graphEd + "animCurveEditorMenu");
+
+		string $menuItem = `menuItem -label "Edit" -allowOptionBoxes true -subMenu true -tearOff true`;
+			defineEditMenu $outlineEd $graphEd $menuItem "bufferCurve" "";
+		setParent -menu ..;
+
+		string $viewItem = `menuItem -label "View"
+					-allowOptionBoxes true
+					-subMenu true
+					-tearOff true`;
+		menuItem -edit
+			-postMenuCommand ("buildGraphEdViewMenu " + $graphEd + " " + $viewItem)
+			$viewItem;
+		setParent -menu ..;
+
+		menuItem -divider true;
+
+		string $selectItem = `menuItem -label "Select" -subMenu true
+			-tearOff true`;
+		buildGraphEdSelectMenu;
+		menuItem -edit -postMenuCommand ("updateGraphEdSelectMenu " +
+										 $selectItem ) $selectItem;
+		setParent -menu ..;
+
+		menuItem -divider true;
+
+		string $curvesItem = `menuItem -label "Curves" -allowOptionBoxes true -subMenu true -tearOff true`;
+			defineCurvesMenu $outlineEd $graphEd $curvesItem "bufferCurve useSmoothness" "";
+		setParent -menu ..;
+
+		string $keysItem = `menuItem -label "Keys" -subMenu true -tearOff true`;
+		menuItem -edit
+			-postMenuCommand ("buildGraphEdKeysMenu " + $outlineEd + " " + $graphEd + " " + $keysItem)
+			$keysItem;
+		setParent -menu ..;
+
+		string $tangentsItem = `menuItem -label "Tangents" -subMenu true -tearOff true`;
+			defineTangentsMenu $outlineEd $graphEd $tangentsItem "bufferCurve" "";
+		setParent -menu ..;
+
+		menuItem -divider true;
+
+		string $menuItem = `menuItem -label "List"
+			-allowOptionBoxes false
+			-subMenu true
+			-tearOff true
+			optionsHierItem`;
+			defineListMenu "noOptions" $outlineEd $graphEd $menuItem "";
+		setParent -m ..;
+	setParent -m ..;
+
+	return;
+}
+
+// *********************************************
+// End of menu creation procedures.
+// *********************************************
+
+
+global proc createGraphEditor (string $whichPanel)
+//
+//  Description:
+//		Define the editors that are used in this panel.  No
+//		controls (widgets) are created at this point.
+//
+{
+	//  create unique names for editors based on panel name
+	//
+	string $graphEd = ($whichPanel + "GraphEd");
+	string $outlineEd = ($whichPanel + "OutlineEd");
+	string $outlineConn = ($whichPanel + "FromOutliner");
+
+	loadAnimPanelLibrary;
+	setOptionVars;
+
+	selectionConnection $outlineConn ;
+
+	createSharedOutlinerEditor ($outlineEd);
+	outlinerEditor
+		-edit
+		-unParent
+ 		-mainListConnection graphEditorList
+ 		-selectionConnection $outlineConn
+ 		-highlightConnection keyframeList
+		-showShapes true
+		-showAttributes true
+		-showConnected true
+		-showAnimCurvesOnly true
+		-showDagOnly false
+		-autoExpand true
+		-expandConnections true
+		-showCompounds false
+		-showNumericAttrsOnly true
+		-autoSelectNewObjects true
+		-transmitFilters true
+		-showSetMembers false
+		$outlineEd;
+
+	selectionConnection -edit -parent $outlineEd $outlineConn;
+
+	animCurveEditor
+		-unParent
+ 		-mainListConnection $outlineConn
+		-menu ""
+		-clipTime `optionVar -query graphEditorClipTime`
+		-autoFit `optionVar -query graphEditorAutoFit`
+		-displayInfinities false
+		$graphEd;
+
+	registerEditor ($outlineEd, "graphEditorList");
+}
+
+global proc buildGraphEditorContextHelpItems(string $nameRoot, string $menuParent)
+//
+//  Description:
+//		Build context sensitive menu items
+//
+//  Input Arguments:
+//		$nameRoot - name to use as the root of all item names
+//		$menuParent - the name of the parent of this menu
+//
+//  Return Value:
+//      None
+//
+{
+	menuItem -label "Help on Graph Editor..."
+		-enableCommandRepeat false
+		-command "showHelp GraphEditor";
+}
+
+global proc doNormalizeCurvesButtonAction(string $graphEditor, int $normalize)
+{
+	setCurveNormalization($normalize, $graphEditor);
+	catch("menuItem -edit -checkBox $normalize normalizeCurvesMenuItem;");
+}
+
+global proc addGraphEditor (string $whichPanel)
+//
+//  Description:
+//		Add the panel to a layout.
+//		Parent the editors to that layout and create any other
+//		controls (widgets) required.
+//
+{
+	string $graphEd = ($whichPanel + "GraphEd");
+	string $outlineEd = ($whichPanel + "OutlineEd");
+	string $outlineEdForm = ($whichPanel + "OutlineEdForm");
+
+	string $selectionConnection = `editor -query -selectionConnection $outlineEd`;
+
+//	Do not use the wait cursor, it causes a problem (crash) when used
+//	in combination with the table widget (key frame stats). (64944)
+//
+//	waitCursor -state on;
+
+	// Make sure that there is no template active
+	setUITemplate -pushTemplate NONE;
+
+	// Define the standard animation editing panel
+	//
+	string $widgetList[] = `definePanelElements $whichPanel`;
+
+	//	menuBarLayout is turned on for this editor -
+	//	create the top level menus
+	//
+		setParent $widgetList[2];
+
+		string $menuItem = `menu -label "Edit"
+					-allowOptionBoxes true
+					-tearOff true
+			        -postMenuCommandOnce true
+					-familyImage "menuIconEdit.xpm"`;
+			defineEditMenu $outlineEd $graphEd $menuItem "bufferCurve" "";
+		setParent -menu ..;
+
+		string $viewMenu = `menu -label "View"
+					-allowOptionBoxes true
+					-tearOff true
+					-familyImage "menuIconView.xpm"`;
+		menu -edit
+			-postMenuCommand ("buildGraphEdViewMenu " + $graphEd + " " + $viewMenu)
+			$viewMenu;
+		setParent -menu ..;
+
+		string $selectMenu = `menu -label "Select"
+					-tearOff true
+					-familyImage "menuIconSelect.xpm"`;
+		menu -edit -postMenuCommand ("updateGraphEdSelectMenu " + $selectMenu )
+			$selectMenu;
+		buildGraphEdSelectMenu;
+		setParent -menu ..;
+
+		string $curvesMenu = `menu -label "Curves"
+						-allowOptionBoxes true
+						-tearOff true
+						-familyImage "menuIconAnimCurves.xpm"`;
+			defineCurvesMenu $outlineEd $graphEd $curvesMenu "bufferCurve useSmoothness" "";
+		setParent -menu ..;
+
+		string $keysMenu = `menu -label "Keys"
+					-tearOff true
+			        -postMenuCommandOnce true
+					-familyImage "menuIconKeys.xpm"`;
+		menu -edit
+			-postMenuCommand ("buildGraphEdKeysMenu " + $outlineEd + " " + $graphEd + " " + $keysMenu)
+			$keysMenu;
+		setParent -menu ..;
+
+		string $tangentsMenu = `menu -label "Tangents"
+						-tearOff true
+			            -postMenuCommandOnce true
+						-familyImage "menuIconTangents.xpm"`;
+			defineTangentsMenu $outlineEd $graphEd $tangentsMenu "bufferCurve" "";
+		setParent -menu ..;
+
+		$menuItem = `menu -label "List"
+				-tearOff true
+				-familyImage "menuIconOptions.xpm"`;
+			defineListMenu "noOptions" $outlineEd $graphEd $menuItem "";
+		setParent -m ..;
+
+		//	Attach the filter menu to the menu bar.
+		//
+		filterUICreateMenu($outlineEd, `setParent -query`);
+
+	//	Add support for the Context Sensitive Help Menu.
+	//
+	addContextHelpProc $whichPanel "buildGraphEditorContextHelpItems";
+
+	// Attach tools to the tool form
+	//
+	setParent $widgetList[4];
+		toolButton
+			-doubleClickCommand toolPropertyWindow
+			-collection toolCluster
+			-tool directKeySuperContext
+			-style "iconOnly"
+			-image1 "directKeySmall.xpm"
+			-width 26 -height 26
+			directKeyTool;
+		toolButton
+			-doubleClickCommand toolPropertyWindow
+			-collection toolCluster
+			-tool insertKeySuperContext
+			-style "iconOnly"
+			-image1 "insertKeySmall.xpm"
+			-width 26 -height 26
+			insertKeyTool;
+		toolButton
+			-doubleClickCommand toolPropertyWindow
+			-collection toolCluster
+			-tool setKeySuperContext
+			-style "iconOnly"
+			-image1 "setKeySmall.xpm"
+			-width 26 -height 26
+			setKeyTool;
+		toolButton
+			-doubleClickCommand toolPropertyWindow
+			-collection toolCluster
+			-tool latticeDeformKeySuperContext
+			-style "iconOnly"
+			-image1 "latticeDeformKeySmall.xpm"
+			-width 26 -height 26
+			latticeDeformKeyTool;
+
+
+
+		// Keyframe stats window
+		//
+		keyframeStats
+			-height 26
+			-width 165
+			-animEditor $graphEd
+			-timeAnnotation "Selected Key's Time: Enter a value for the selected key's time"
+			-valueAnnotation "Selected Key's Value: Enter a value for the selected key"
+			keyframeStats;
+
+
+		//	Set initial snapping states
+		//
+		int $timeSnap = 0;
+		int $valueSnap = 0;
+
+		string $snap = `animCurveEditor -query -snapTime $graphEd`;
+		if( $snap != "none" ) {
+			$timeSnap = 1;
+		}
+
+		$snap = `animCurveEditor -query -snapValue $graphEd`;
+		if( $snap != "none" ) {
+			$valueSnap = 1;
+		}
+
+		// View buttons
+		//
+		int $iconSize = 26;
+
+		iconTextButton
+			-i1 "traxFrameAll.xpm"
+			-width $iconSize -height $iconSize
+			-annotation "Frame All"
+			-command ("FrameAll")
+			frameAllButton;
+
+		iconTextButton
+			-i1 "traxFrameRange.xpm"
+			-width $iconSize -height $iconSize
+			-annotation "Frame Playback Range"
+			-command (
+				"animView " +
+				"-startTime (`playbackOptions -query -minTime` - 1) " +
+				"-endTime (`playbackOptions -query -maxTime` + 1) " +
+				 $graphEd
+			)
+			frameRangeButton;
+
+		// Buffer curve support
+		//
+
+		iconTextButton
+			-i1 "bufferSnap.xpm"
+			-width $iconSize -height $iconSize
+			-command "doBuffer snapshot"
+			-annotation "Buffer curve snapshot; display with View->Show Buffer Curves"
+			bufferSnapButton;
+		iconTextButton
+			-i1 "bufferSwap.xpm"
+			-width $iconSize -height $iconSize
+			-command "doBuffer swap"
+			-annotation "Swap buffer curve; display with View->Show Buffer Curves"
+			bufferSwapButton;
+
+		iconTextCheckBox
+			-i1 "snapTime.xpm"
+			-width $iconSize -height $iconSize
+			-onCommand ( "animCurveEditor -edit -snapTime \"integer\"" + $graphEd )
+			-offCommand ( "animCurveEditor -edit -snapTime \"none\"" + $graphEd )
+			-annotation "Time snap on/off"
+			-value $timeSnap
+			timeSnapButton;
+		iconTextCheckBox
+			-i1 "snapValue.xpm"
+			-width $iconSize -height $iconSize
+			-onCommand ( "animCurveEditor -edit -snapValue \"integer\"" + $graphEd )
+			-offCommand ( "animCurveEditor -edit -snapValue \"none\"" + $graphEd )
+			-annotation "Value snap on/off"
+			-value $valueSnap
+			valueSnapButton;
+		iconTextButton
+			-i1 "breakTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-lock off\" " + $selectionConnection + " noOptions")
+			-annotation "Break tangents"
+			breakTanButton;
+		iconTextButton
+			-i1 "unifyTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-lock on\" " + $selectionConnection + " noOptions")
+			-annotation "Unify tangents"
+			unifyTanButton;
+		iconTextButton
+			-i1 "freeTangentWeight.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-weightLock off\" " + $selectionConnection + " noOptions")
+			-annotation "Free tangent weight"
+			freeTanButton;
+		iconTextButton
+			-i1 "lockTangentWeight.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-weightLock on\" " + $selectionConnection + " noOptions")
+			-annotation "Lock tangent weight"
+			lockTanButton;
+		iconTextButton
+			-i1 "splineTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-itt spline -ott spline\" " + $graphEd + " bufferCurve")
+			-annotation "Spline tangents"
+			splineTanButton;
+		iconTextButton
+			-i1 "clampedTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-itt clamped -ott clamped\" " + $graphEd + " bufferCurve")
+			-annotation "Clamped tangents"
+			clampedTanButton;
+		iconTextButton
+			-i1 "linearTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-itt linear -ott linear\" " + $graphEd + " bufferCurve")
+			-annotation "Linear tangents"
+			linearTanButton;
+		iconTextButton
+			-i1 "flatTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-itt flat -ott flat\" " + $graphEd + " bufferCurve")
+			-annotation "Flat tangents"
+			flatTanButton;
+		iconTextButton
+			-i1 "stepTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-ott step\" " + $graphEd + " bufferCurve")
+			-annotation "Step tangents"
+			stepTanButton;
+		iconTextButton
+			-i1 "plateauTangent.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doKeyTangent \"-itt plateau -ott plateau\" " + $graphEd + " bufferCurve")
+			-annotation "Plateau tangents"
+			plateauTanButton;
+
+		iconTextButton
+			-i1 "normCurves.xpm"
+			-width $iconSize -height $iconSize
+			-command ( "normalizeCurves " + $graphEd )
+			-annotation "Normalize curves in the Graph Editor"
+			normalizeCurvesButton;
+
+		iconTextButton
+			-i1 "denormCurves.xpm"
+			-width $iconSize -height $iconSize
+			-command ( "denormalizeCurves " + $graphEd + " true")
+			-annotation "Denormalize curves in the Graph Editor"
+			denormalizeCurvesButton;
+
+		// toggleAutoLoad needs to know the full path name of this button
+		// however it is difficult to pass it in (because toggleAutoLoad
+		// is called from several places, including c++ code), so instead
+		// the name is carefully constructed to be unique
+		//
+		string $loadToggleButton = ($outlineEd + "loadToggleButton");
+		string $reloadButton = ($outlineEd + "reloadButton");
+		iconTextCheckBox
+			-i1 "autoload.xpm"
+			-width $iconSize -height $iconSize
+			-onCommand ( "toggleAutoLoad " + $outlineEd + " 1" )
+			-offCommand ( "toggleAutoLoad " + $outlineEd + " 0" )
+			-annotation "Auto Load Graph Editor on/off"
+			-value `isAutoLoad $outlineEd`
+			$loadToggleButton;
+
+		iconTextButton
+			-i1 "reload.xpm"
+			-width $iconSize -height $iconSize
+			-command ("doReload " + $outlineEd )
+			-annotation "Load Graph Editor from Selection"
+			-enable (!`isAutoLoad $outlineEd`)
+			$reloadButton;
+
+		//	Separators, to break up layout of the
+		//	buttons on the graph editor toolbar
+		//
+		separator -horizontal false -style single toolSeparator;
+		separator -horizontal false -style single viewSeparator;
+		separator -horizontal false -style single bufferSeparator;
+		separator -horizontal false -style single snapSeparator;
+		separator -horizontal false -style single tangentSeparator;
+		separator -horizontal false -style single interpSeparator;
+		separator -horizontal false -style single loadSeparator;
+		separator -horizontal false -style single normSeparator;
+		separator -horizontal false -style single rightSeparator;
+
+		string $filterButton = `button -l "filter"`;
+		string $keyButton = `button -l "copycat"`;
+		string $scaleButton = `button -l "SCALE"`;
+		string $tanButton = `button -l "tangent"`;
+
+		popupMenu -b 1 -p $filterButton -aob 1 -pmc( "buildFilterMenu graphEditorButtonFiltPopup;" ) graphEditorButtonFiltPopup;
+		popupMenu -b 1 -p $keyButton -aob 1 -pmc( "eval \"source zooSetkey;\"; zooSetkeyCreateUI graphEditorButtonSKPopup 0;" ) graphEditorButtonSKPopup;
+		popupMenu -b 1 -p $scaleButton -aob 1 -pmc( "eval \"source zooKeymaster; source zooKeymasterMenu;\"; zooKeymasterMenuUI graphEditorButtonKMPopup;" ) graphEditorButtonKMPopup;
+		popupMenu -b 1 -p $tanButton -aob 1 -pmc( "eval \"source zooTangentWks;\"; zooTangentWksCreateUI graphEditorButtonTANPopup;" ) graphEditorButtonTANPopup;
+
+		//	Layout the toolbar
+		//
+		int $margin = 1;
+		formLayout -edit
+			-attachForm directKeyTool "left" 0
+			-attachControl insertKeyTool "left" 0 directKeyTool
+			-attachControl setKeyTool "left" 0 insertKeyTool
+			-attachControl latticeDeformKeyTool "left" 0 setKeyTool
+
+			-attachControl toolSeparator "left" $margin latticeDeformKeyTool
+			-attachForm toolSeparator "top" $margin
+			-attachForm toolSeparator "bottom" $margin
+			-attachNone toolSeparator "right"
+
+			-attachControl keyframeStats "left" $margin toolSeparator
+			-attachForm keyframeStats "top" $margin
+			-attachForm keyframeStats "bottom" $margin
+			-attachNone keyframeStats "right"
+
+			-attachControl viewSeparator "left" $margin keyframeStats
+			-attachForm viewSeparator "top" $margin
+			-attachForm viewSeparator "bottom" $margin
+			-attachNone viewSeparator "right"
+
+			-attachControl frameAllButton "left" 0 viewSeparator
+			-attachForm frameAllButton "top" $margin
+			-attachForm frameAllButton "bottom" $margin
+			-attachNone frameAllButton "right"
+
+			-attachControl frameRangeButton "left" 0 frameAllButton
+			-attachForm frameRangeButton "top" $margin
+			-attachForm frameRangeButton "bottom" $margin
+			-attachNone frameRangeButton "right"
+
+			-attachControl interpSeparator "left" $margin frameRangeButton
+			-attachForm interpSeparator "top" $margin
+			-attachForm interpSeparator "bottom" $margin
+			-attachNone interpSeparator "right"
+
+			-attachControl splineTanButton "left" 0 interpSeparator
+			-attachForm splineTanButton "top" $margin
+			-attachForm splineTanButton "bottom" $margin
+			-attachNone splineTanButton "right"
+
+			-attachControl clampedTanButton "left" 0 splineTanButton
+			-attachForm clampedTanButton "top" $margin
+			-attachForm clampedTanButton "bottom" $margin
+			-attachNone clampedTanButton "right"
+
+			-attachControl linearTanButton "left" 0 clampedTanButton
+			-attachForm linearTanButton "top" $margin
+			-attachForm linearTanButton "bottom" $margin
+			-attachNone linearTanButton "right"
+
+			-attachControl flatTanButton "left" 0 linearTanButton
+			-attachForm flatTanButton "top" $margin
+			-attachForm flatTanButton "bottom" $margin
+			-attachNone flatTanButton "right"
+
+			-attachControl stepTanButton "left" 0 flatTanButton
+			-attachForm stepTanButton "top" $margin
+			-attachForm stepTanButton "bottom" $margin
+			-attachNone stepTanButton "right"
+
+			-attachControl plateauTanButton "left" 0 stepTanButton
+			-attachForm plateauTanButton "top" $margin
+			-attachForm plateauTanButton "bottom" $margin
+			-attachNone plateauTanButton "right"
+
+			-attachControl bufferSeparator "left" $margin plateauTanButton
+			-attachForm bufferSeparator "top" $margin
+			-attachForm bufferSeparator "bottom" $margin
+			-attachNone bufferSeparator "right"
+
+			-attachControl bufferSnapButton "left" $margin bufferSeparator
+			-attachForm bufferSnapButton "top" $margin
+			-attachForm bufferSnapButton "bottom" $margin
+			-attachNone bufferSnapButton "right"
+
+			-attachControl bufferSwapButton "left" 0 bufferSnapButton
+			-attachForm bufferSwapButton "top" $margin
+			-attachForm bufferSwapButton "bottom" $margin
+			-attachNone bufferSwapButton "right"
+
+			-attachControl tangentSeparator "left" $margin bufferSwapButton
+			-attachForm tangentSeparator "top" $margin
+			-attachForm tangentSeparator "bottom" $margin
+			-attachNone tangentSeparator "right"
+
+			-attachControl breakTanButton "left" $margin tangentSeparator
+			-attachForm breakTanButton "top" $margin
+			-attachForm breakTanButton "bottom" $margin
+			-attachNone breakTanButton "right"
+
+			-attachControl unifyTanButton "left" 0 breakTanButton
+			-attachForm unifyTanButton "top" $margin
+			-attachForm unifyTanButton "bottom" $margin
+			-attachNone unifyTanButton "right"
+
+			-attachControl freeTanButton "left" 0 unifyTanButton
+			-attachForm freeTanButton "top" $margin
+			-attachForm freeTanButton "bottom" $margin
+			-attachNone freeTanButton "right"
+
+			-attachControl lockTanButton "left" 0 freeTanButton
+			-attachForm lockTanButton "top" $margin
+			-attachForm lockTanButton "bottom" $margin
+			-attachNone lockTanButton "right"
+
+			-attachControl loadSeparator "left" $margin lockTanButton
+			-attachForm loadSeparator "top" $margin
+			-attachForm loadSeparator "bottom" $margin
+			-attachNone loadSeparator "right"
+
+			-attachControl $loadToggleButton "left" $margin loadSeparator
+			-attachForm $loadToggleButton "top" $margin
+			-attachForm $loadToggleButton "bottom" $margin
+			-attachNone $loadToggleButton "right"
+
+			-attachControl $reloadButton "left" 0 $loadToggleButton
+			-attachForm $reloadButton "top" $margin
+			-attachForm $reloadButton "bottom" $margin
+			-attachNone $reloadButton "right"
+
+			-attachControl snapSeparator "left" $margin $reloadButton
+			-attachForm snapSeparator "top" $margin
+			-attachForm snapSeparator "bottom" $margin
+			-attachNone snapSeparator "right"
+
+			-attachControl timeSnapButton "left" $margin snapSeparator
+			-attachForm timeSnapButton "top" $margin
+			-attachForm timeSnapButton "bottom" $margin
+			-attachNone timeSnapButton "right"
+
+			-attachControl valueSnapButton "left" 0 timeSnapButton
+			-attachForm valueSnapButton "top" $margin
+			-attachForm valueSnapButton "bottom" $margin
+			-attachNone valueSnapButton "right"
+
+			-attachControl normSeparator "left" $margin valueSnapButton
+			-attachForm normSeparator "top" $margin
+			-attachForm normSeparator "bottom" $margin
+			-attachNone normSeparator "right"
+
+			-attachControl normalizeCurvesButton "left" 0 normSeparator
+			-attachForm normalizeCurvesButton "top" $margin
+			-attachForm normalizeCurvesButton "bottom" $margin
+			-attachNone normalizeCurvesButton "right"
+
+			-attachControl denormalizeCurvesButton "left" 0 normalizeCurvesButton
+			-attachForm denormalizeCurvesButton "top" $margin
+			-attachForm denormalizeCurvesButton "bottom" $margin
+			-attachNone denormalizeCurvesButton "right"
+
+			-attachControl rightSeparator "left" $margin denormalizeCurvesButton
+			-attachForm rightSeparator "top" $margin
+			-attachForm rightSeparator "bottom" $margin
+			-attachNone rightSeparator "right"
+
+			-af $filterButton "top" 0
+			-ac $filterButton "left" 0 rightSeparator
+			-af $filterButton "bottom" 0
+
+			-af $keyButton "top" 0
+			-ac $keyButton "left" 0 $filterButton
+			-af $keyButton "bottom" 0
+
+			-af $scaleButton "top" 0
+			-ac $scaleButton "left" 0 $keyButton
+			-af $scaleButton "bottom" 0
+
+			-af $tanButton "top" 0
+			-ac $tanButton "left" 0 $scaleButton
+			-af $tanButton "bottom" 0
+
+			$widgetList[4];
+
+
+
+	// Add two buttons to $widgetList[5] formLayout to
+	// control the size of the formLayout that holds
+	// the outliner and the graph editor widget
+	//
+//	formLayout -p $widgetList[5] -width $gGraphEdOutlinerWidth $outlineEdForm;
+	formLayout -p $widgetList[5] $outlineEdForm;
+		button -l "<<"
+			-h 15 -rs false
+			-ann "Decrease outliner size"
+			-command ( "setGraphSize smaller " + $widgetList[5] )
+			graphEdSmallerButton;
+		button -l ">>"
+			-h 15 -rs false
+			-ann "Increase outliner size"
+			-command ( "setGraphSize bigger " + $widgetList[5] )
+			graphEdBiggerButton;
+		string $outlineEdLayout = addSharedOutlinerEditor ($outlineEdForm, $outlineEd);
+	setParent ..;
+
+	//	Attach the filter menu to the popup menu
+	//	This has to be done after the outliner has been parented
+	//
+	filterUICreateMenu($outlineEd, ($outlineEd + "Popup"));
+
+	//	Create an edit field for regular expression filtering in the
+	//	outliner editor.
+	//
+	string $filterField = filterUICreateField($outlineEd, $outlineEdForm);
+
+	formLayout -e
+		-af graphEdSmallerButton left 0
+		-ap graphEdSmallerButton right 0 50
+		-af graphEdSmallerButton bottom 0
+		-an graphEdSmallerButton top
+
+		-ap graphEdBiggerButton left 0 50
+		-af graphEdBiggerButton right 0
+		-af graphEdBiggerButton bottom 0
+		-an graphEdBiggerButton top
+
+		-af $filterField top 0
+		-af $filterField left 0
+		-an $filterField bottom
+		-af $filterField right 0
+
+		-af $outlineEdLayout left 0
+		-af $outlineEdLayout right 0
+		-ac $outlineEdLayout top 0 $filterField
+		-ac $outlineEdLayout bottom 0 graphEdSmallerButton
+		$outlineEdForm;
+
+	// Parent the editors to the editor layout
+	//
+	animCurveEditor -edit -parent $widgetList[5] $graphEd;
+
+	// set initial clipTime state
+	//
+	int $clipTimeOptVar = `optionVar -q graphEditorClipTime`;
+	animCurveEditor -e -clipTime $clipTimeOptVar $graphEd;
+	//	Attach a procedure that will limit the kinds of filters displayed
+	//	in the Dope Sheet's filter menus.
+	//
+	filterUISetRelatedFiltersProcedure($outlineEd, "graphEditorFilterCategories");
+
+	// Setup the formLayout, $widgetList[5]
+	//
+/*	formLayout -e
+		-af $outlineEdForm left 0
+		-af $outlineEdForm bottom 0
+		-af $outlineEdForm top 0
+		-an $outlineEdForm right
+
+		-ac $graphEd left 0 $outlineEdForm
+		-af $graphEd top 0
+		-af $graphEd bottom 0
+		-af $graphEd right 0
+		$widgetList[5]; */
+
+	// Ensure that the rowLayout is the correct size,
+	// based on the optionVar graphEdOutlinerWidth
+	//
+	global int $gGraphEdOutlinerWidth;
+	if( !`optionVar -exists graphEdOutlinerWidth` ) {
+		optionVar -iv graphEdOutlinerWidth 190;
+	}
+	$gGraphEdOutlinerWidth = `optionVar -q graphEdOutlinerWidth`;
+	rowLayout -e -columnWidth 1 $gGraphEdOutlinerWidth $widgetList[5];
+
+	// Attach menus to the graph editor and the
+	// outliner editor.
+	//
+	GraphEditorMenu $graphEd $outlineEd $widgetList;
+
+	setParent -top;
+
+	setUITemplate -popTemplate;
+
+//	Do not use the wait cursor, it causes a problem (crash) when used
+//	in combination with the table widget (key frame stats). (64944)
+//
+//	waitCursor -state off;
+}
+
+global proc removeGraphEditor (string $whichPanel)
+//
+//  Description:
+//		Remove the panel from a layout.
+//		Delete controls.
+//
+{
+	string $graphEd = ($whichPanel + "GraphEd");
+	string $outlineEd = ($whichPanel + "OutlineEd");
+
+	if (`animCurveEditor -exists $graphEd`) {
+		animCurveEditor -edit -unParent $graphEd;
+	}
+	if (`outlinerEditor -exists $outlineEd`) {
+		removeSharedOutlinerEditor $outlineEd;
+	}
+
+	//	If the graph editor is deleted then we must let the filter ui
+	//	know that the filter menu(s) and filter field are no longer valid
+	//	for this editor.
+	//
+	filterUIRemoveView($outlineEd);
+}
+
+global proc setGraphSize (string $size, string $rowLayout)
+//
+//
+{
+	global int $gGraphEdOutlinerWidth;
+//	string $outlineEdForm = ($whichPanel + "OutlineEdForm");
+
+	if( $size == "bigger" ) {
+		if( $gGraphEdOutlinerWidth <= 300 ) {
+			$gGraphEdOutlinerWidth = $gGraphEdOutlinerWidth + 20;
+		}
+	} else {
+		if( $gGraphEdOutlinerWidth >= 200 ) {
+			$gGraphEdOutlinerWidth = $gGraphEdOutlinerWidth - 20;
+		}
+	}
+//	formLayout -e -width $gGraphEdOutlinerWidth $outlineEdForm;
+	rowLayout -e -columnWidth 1 $gGraphEdOutlinerWidth $rowLayout;
+	optionVar -iv graphEdOutlinerWidth $gGraphEdOutlinerWidth;
+}
+
+global proc deleteGraphEditor (string $whichPanel)
+//
+//  Description:
+//		This proc will delete the contents of the panel, but not
+//		the panel itself.
+//
+//  Note:
+//		We only need to delete editors here.  Other UI will be taken care of
+//		by the remove proc.
+//
+{
+	string $graphEd = ($whichPanel + "GraphEd");
+	string $outlineEd = ($whichPanel + "OutlineEd");
+
+	if (`animCurveEditor -exists $graphEd`) {
+		deleteUI -editor $graphEd;
+	}
+	if (`outlinerEditor -exists $outlineEd`) {
+		deleteUI -editor $outlineEd;
+	}
+}
+
+global proc string saveStateGraphEditor (string $whichPanel)
+//
+//  Description:
+//		This proc returns a string that when executed will restore the
+//		current state of the panel elements.
+//
+{
+	string $indent = "\n\t\t\t";
+	string $graphEd = ($whichPanel + "GraphEd");
+	string $outlineEd = ($whichPanel + "OutlineEd");
+
+	return (
+			$indent + "$editorName = ($panelName+\"OutlineEd\");\n" +
+			`outlinerEditor -query -stateString $outlineEd` + ";\n" +
+			$indent + "$editorName = ($panelName+\"GraphEd\");\n" +
+			`animCurveEditor -query -stateString $graphEd`
+	);
+}
+
+global proc graphEditorPanel (string $panelName)
+//
+//  Description:
+//		Create a new scripted graphEditor.  If the scripted
+//		panel hasn't yet been defined then define it.
+//
+{
+}
+
+global proc string [] graphEditorFilterCategories()
+//
+//	Description:
+//		Return the types of filters that the Graph Editor will display
+//		in its "Show->Objects" filter menu.
+//
+{
+	string $result[] = { "Modeling", "Camera", "Animating" };
+	return $result;
+}
+
+
+global proc buildFilterMenu( string $parent ) {
+	menu -e -dai $parent;
+	setParent -m $parent;
+
+	eval( "source abxSmartKey;" );
+	int $abxState = `abxSmartKeyState {}`;
+
+	menuItem -l "show selected curve" -c( "zooGraphFilterUtils; zooGraphSelectedCurves;" );
+	menuItem -l "show ALL curves" -c( "zooGraphFilterUtils; zooGraphAllChannels;" );
+	menuItem -l "select like channels on ALL objects" -c( "zooGraphFilterUtils; zooGraphChannelTypes `zooGetHighlightedChannels`;" );
+	menuItem -l "show TRANSLATE only" -c( "zooGraphFilterUtils; zooGraphChannelTypes {\"tx\",\"ty\",\"tz\"};" );
+	menuItem -l "show ROTATE only" -c( "zooGraphFilterUtils; zooGraphChannelTypes {\"rx\",\"ry\",\"rz\"};" );
+	menuItem -d 1;
+	menuItem -cb $abxState -l "smart key" -c( "abxSetSmartKeyState "+ !$abxState +";" );
+	}

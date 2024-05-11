@@ -1,0 +1,22 @@
+//*****************************************
+//
+//	vstIK
+// by: steve
+//	stevek@valvesoftware.com
+//
+
+//
+//******************************************
+
+global proc string vstIK (string $joint1, string $joint2, string $parent)
+{
+	string $ikHandleName = ($joint2 + "ikHandle");
+	ikHandle -sol ikRPsolver -n $ikHandleName -sj $joint1 -ee $joint2;
+	$attr = ($ikHandleName + ".visibility");
+	setAttr $attr 0;
+	select -r $ikHandleName;
+	makeIdentity -apply true -t 1;
+	select -cl;
+	parent $ikHandleName $parent;
+	return $ikHandleName;
+}

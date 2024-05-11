@@ -1,0 +1,71 @@
+
+global proc FileMenu_SaveItem()
+//
+// If the current file is named, save it.  If it
+// is still untitled, then bring up the Save As
+// dialog.
+//
+{
+	string $sceneName = `file -q -sceneName`;
+
+
+	//**** BEGIN VALVE EDITS
+	//check to see if file is in perforce - check to see if open for edit if is
+	p4;
+	string $names[] = {};
+	string $data[] = {};
+	int $isEdit = `isEdit $sceneName $names $data`;
+
+	//if its not open for edit AND there have been changes made AND the file actually exists, ask if they want the file checked out
+	if( $isEdit == 0 ) if( `file -q -amf` && `file -q -ex` ) {
+		int $haveIdx = `zooGetIdxOfElement_str $names "haveRev"`;
+		int $headIdx = `zooGetIdxOfElement_str $names "headRev"`;
+		string $ans = "";
+		string $default = `optionVar -ex vSaveAutoCheckout`? `optionVar -q vSaveAutoCheckout`: "";
+
+		if( $default == "" ) {
+			$ans = `confirmDialog -t "file isn't checked out" -m( "the file: "+ $sceneName +"\nisn't checked out\ndo you want me to open for edit?" ) -b "Yes" -b "No" -b "always" -b "never" -db "Yes"`;
+			if( $ans == "always" ) optionVar -sv vSaveAutoCheckout "always";
+			else if( $ans == "No" ) return;
+			else if( $ans == "never" ) {
+				optionVar -sv vSaveAutoCheckout "never";
+				return;
+				}
+			$default = `optionVar -q vSaveAutoCheckout`;
+			}
+
+		//if the user has specified never - and the file isn't open for edit, then bail.  we don't even want to try to save because the file isn't writeable
+		if( $default == "never" ) {
+			string $ans = `confirmDialog -t "file isn't checked out" -m "file isn't checked out - bailing on save" -b "OK" -b "turn never checkout off" -db "OK"`;
+			if( $ans != "OK" ) optionVar -rm vSaveAutoCheckout;
+			else return;
+			}
+		//make sure perforce integration is enabled first
+		if( !`optionVar -ex zooAssetsP4Menu` || `optionVar -q zooAssetsP4Menu` == 1 ) p4_edit {$sceneName} -1;
+		}
+	//**** END VALVE EDITS
+
+
+	// Get the name of the scene File.
+	if ( size($sceneName) == 0 ) {
+		// Then the name can't be set.
+		projectViewer SaveAs;
+	// bug fix 89970 file save
+	} else if ((`file -q -amf`) || (`file -q -ex` == 0)) {
+		int $incrementalSave = false;
+		if(`optionVar -exists isIncrementalSaveEnabled`)
+			$incrementalSave = `optionVar -q isIncrementalSaveEnabled`;
+		if ( $incrementalSave ) {
+			// Save the scene using the Incremental Save feature.
+			//
+			incrementalSaveScene;
+		} else {
+			string $cmd = "file -save";
+			evalEcho($cmd);
+		}
+	} else {
+		warning ("No changes to save.");
+	}
+}
+
+

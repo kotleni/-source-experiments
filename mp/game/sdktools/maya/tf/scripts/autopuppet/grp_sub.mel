@@ -1,0 +1,30 @@
+global proc grp_sub(string $find, string $replace, string $filename)
+{
+	// make sure we get a DOS friendly $filename
+	$filename = toNativePath($filename);
+	system ("copy " + $filename + " " + $filename + ".bak");
+
+	$fileWrite = `fopen $filename "w"`;
+
+	$fileInBak= ($filename + ".bak");
+	$fileRead = `fopen $fileInBak "r"`;
+
+	$nextLine = `fgetline $fileRead`;
+
+	while (`size $nextLine` > 0)
+	{
+		if (`gmatch $nextLine ("*" + $find + "*")`)
+		{
+			$nextLine = `substitute $find $nextLine $replace`;
+//			$nextLine = substituteAllString($nextLine, $find, $replace);
+			fprint $fileWrite $nextLine;
+		}
+		else
+		{
+			fprint $fileWrite $nextLine;
+		}
+		$nextLine = `fgetline $fileRead`;
+	}
+	fclose $fileRead;
+	fclose $fileWrite;
+}

@@ -1,0 +1,43 @@
+//*****************************************
+//
+//	vstMakeMain
+//	-makes the main node of the biped rig
+//
+//	use: vstMakeMain("name of controller", "size of controller", vstInfo)
+//
+// 	by: steve/wade
+//	stevek@valvesoftware.com
+//	wade@valvesoftware.com
+//	5/18/2006
+//		-passed in the vstInfo node so that channels can be locked/hidden/added to plotted
+//
+//******************************************
+
+
+//simple but this node will eventually have all the IK/FK switches stored in it
+//and serve as the parent to all the controls
+global proc vstMakeMain( string $name, int $radius, string $vstInfo )
+{
+	string $mainName[] = `cylinder -p 0 0 0 -ax 0 1 0 -ssw 0 -esw 360 -r $radius -hr 2 -d 1 -ut 0 -tol 0.01 -s 8 -nsp 1 -ch 0 -name $name`;
+	
+	setAttr( $mainName[0] + ".sy" ) 0;
+	makeIdentity -apply true -s 1 $mainName[0];
+	vstSetDisplay( "C", $mainName[0] );
+
+	// add a bunch of attributes
+	addAttr -ln "rArmIKFK" -at double -k 1 -min 0 -max 1 -dv 1;
+	addAttr -ln "lArmIKFK" -at double -k 1 -min 0 -max 1 -dv 1;
+	addAttr -ln "rLegIKFK" -at double -k 1 -min 0 -max 1 -dv 1;
+	addAttr -ln "lLegIKFK" -at double -k 1 -min 0 -max 1 -dv 1;
+	addAttr -ln "spineIKFK"-at double -k 1 -min 0 -max 1 -dv 0;
+
+	// turn on the defualt manipulator
+	select -r $mainName[0];
+	setAttr .showManipDefault 5;
+	
+	vstAddPlotted( $mainName[0] );
+	vstInfoAttr( "main", $mainName[0], $vstInfo );
+	vstHideChannels( $mainName[0], { ".sx", ".sy", ".sz" } );
+	vstSelectHandle( $mainName[0], 0, 0, 0 );
+}
+

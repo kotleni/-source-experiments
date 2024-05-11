@@ -1,0 +1,42 @@
+global proc vstWritePuppetLocatorFile(string $name, string $controls[], string $file)
+{
+	// open  file for writing
+	$fileId = `fopen $file "w"`;
+	
+	// create the AP_creature info node
+	fprint $fileId  "{\r\n";
+	fprint $fileId ("\t// create the puppetInfoNode\r\n");
+	fprint $fileId ("\tstring $creatureInfo = \"AP_" + $name + "\";\r\n");
+	fprint $fileId ("\tcreateNode transform -n  $creatureInfo;\r\n");
+	fprint $fileId ("\n");
+	
+	for ($c in $controls)
+	{
+		float  $hipPos[3];
+		string $side = "";
+		string $buffer[];
+		tokenize $c "_" $buffer;
+		switch ($buffer[1])
+		{
+			case "R":
+				$side = "R";
+				break;
+			case "L":
+				$side = "L";
+				break;
+			case "C":
+			default:
+				$side = "C";
+				break;
+		}	
+		
+		// get the positions of the locators
+		$hipPos = `xform -q -ws -rp ($c)`;
+		fprint $fileId ("\tvstCreateControlNode \"" + $c + "\" " + $hipPos[0] + " " + $hipPos[1] + " " + $hipPos[2] + " $creatureInfo \"" + $side + "\";\r\n");
+	}
+
+	fprint $fileId  "}\r\n";
+	fclose $fileId;
+	print ("wrote " + $file +"\n");
+
+}

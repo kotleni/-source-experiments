@@ -1,0 +1,124 @@
+//*****************************************
+//
+//	vstDupeIKleg
+//
+// 	by: steve/wade
+//	stevek@valvesoftware.com
+//	wade@valvesoftware.com
+//	3/07/2006
+//	5/18/2006
+//		-passed in the vstInfo node so that channels can be locked/hidden/added to plotted
+//
+//******************************************
+
+global proc string[] vstDupeIKleg( string $side, string $leg[], string $parent, float $radius, string $vstInfo )
+{
+	string $type = "IK";
+	string $dupeLeg[];
+	select -cl;
+	// name the new joints
+	string $newUp =  $leg[0] + $type;
+	string $newKnee = $leg[1] + $type;
+	string $newAnkle = $leg[2] + $type;
+	string $newToe =  $leg[3] + $type;
+	string $newEnd= $leg[4] + $type;
+
+	// make the new joints at the origin
+	string $attr = $leg[0] + ".radius";
+	float $radius = `getAttr $attr`;
+
+	joint -n $newUp;
+	setAttr ( $newUp + ".radius" ) 2;
+	joint -n $newKnee;
+	setAttr ( $newKnee + ".radius" ) 2;
+	joint -n $newAnkle;
+	setAttr ( $newAnkle + ".radius" ) 2;
+	joint -n $newToe;
+	setAttr ( $newToe + ".radius" ) 2;
+	joint -n $newEnd;
+	setAttr ( $newEnd + ".radius" ) 2;
+	select -cl;
+
+	// now stick/unstick them to the "real" skeleton
+	delete `parentConstraint $leg[0] $newUp`;
+	delete `parentConstraint $leg[1] $newKnee`;
+	delete `parentConstraint $leg[2] $newAnkle`;
+	delete `parentConstraint $leg[3] $newToe`;
+	delete `parentConstraint $leg[4] $newEnd`;
+
+	select $newUp;
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+	select -cl;
+
+	// point constrain the new upper joint to the skeleton
+	pointConstraint $leg[0] $newUp;
+
+	// hide them legs
+	string $vis = $newUp + ".visibility";
+	setAttr $vis 0;
+
+	// set up the constraints to drive the real skeleton
+	string $upLegCons[] = `orientConstraint $newUp $leg[0]`;
+		// get the constraint attr name
+	string $num[] = `listAttr -v $upLegCons[0]`;
+	int $size = size( $num );
+	string $upLegConsAttr = $num[( $size -1 )];
+
+	string $lowLegCons[] = `orientConstraint $newKnee $leg[1]`;
+	string $num[] = `listAttr -v $lowLegCons[0]`;
+	int $size = size( $num );
+	string $lowLegConsAttr = $num[( $size -1 )];
+
+	string $footCons[] = `orientConstraint $newAnkle $leg[2]`;
+	string $num[] = `listAttr -v $footCons[0]`;
+	int $size = size( $num );
+	string $footConsAttr = $num[( $size -1 )];
+
+	string $toeCons[] = `orientConstraint $newToe $leg[3]`;
+	string $num[] = `listAttr -v $toeCons[0]`;
+	int $size = size( $num );
+	string $toeConsAttr = $num[( $size -1 )];
+
+ 	string $upWeight = 	$upLegCons[0] + "." + $upLegConsAttr;
+	string $lowWeight = $lowLegCons[0] + "." + $lowLegConsAttr;
+	string $ankleWeight = $footCons[0] + "." + $footConsAttr;
+	string $toeWeight = $toeCons[0] + "." + $toeConsAttr;
+
+	// hook up the constraint weights to the main ik/fk switch
+	string $switchAttr = ( "main." + $side + "LegIKFK" );
+	string $visAttr = ( $newUp + ".visibility" );
+	int $isFK = `gmatch $newUp "*FK*"`;
+
+	connectAttr $switchAttr $upWeight;
+	connectAttr $switchAttr $lowWeight;
+	connectAttr $switchAttr $ankleWeight;
+	connectAttr $switchAttr $toeWeight;
+
+	// set its neutral pose
+	select $newUp;
+	joint -e -spa -ch;
+	select -cl;
+
+	// parent the leg
+	parent $newUp $parent;
+
+	$dupeLeg[0] = $newUp;
+	$dupeLeg[1] = $newKnee;
+	$dupeLeg[2] = $newAnkle;
+	$dupeLeg[3] = $newToe;
+	$dupeLeg[4] = $newEnd;
+
+	vstInfoAttr( ( $side + "IKupLeg" ), $dupeLeg[0], $vstInfo );
+	vstInfoAttr( ( $side + "IKknee" ), $dupeLeg[1], $vstInfo );
+	vstInfoAttr( ( $side + "IKankle" ), $dupeLeg[2], $vstInfo );
+	vstInfoAttr( ( $side + "IKtoe" ), $dupeLeg[3], $vstInfo );
+	vstInfoAttr( ( $side + "IKtoeEnd" ), $dupeLeg[4], $vstInfo );
+
+	for ( $d in $dupeLeg )
+	{
+		vstHideChannels( $d, { ".tx", ".ty", ".tz", ".sx", ".sy", ".sz", ".v" } );
+	}
+
+	return $dupeLeg;
+
+}
