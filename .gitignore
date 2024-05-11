@@ -60,3 +60,5 @@ config.cfg
 [Rr]elease*/
 *.pdb
 .vs/
+
+mp/game/hl2mp/cfg/settings.scr
