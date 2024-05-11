@@ -38,6 +38,12 @@ server.pdb
 server.dll
 server.lib
 
+raytrace.lib
+vgui_controls.lib
+tier1.lib
+mathlib.lib
+fgdlib.lib
+
 client.so
 client.so.dbg
 server.so
