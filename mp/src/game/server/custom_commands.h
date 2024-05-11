@@ -5,5 +5,6 @@
 #endif
 
 void DropCurrentWeapon(const CCommand& args);
+void ChangeTeam(const CCommand& args);
 
 #endif
