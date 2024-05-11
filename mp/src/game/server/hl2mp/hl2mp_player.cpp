@@ -867,24 +867,12 @@ bool CHL2MP_Player::BumpWeapon( CBaseCombatWeapon *pWeapon )
 
 	bool bOwnsWeaponAlready = !!Weapon_OwnsThisType( pWeapon->GetClassname(), pWeapon->GetSubType());
 
-	if ( bOwnsWeaponAlready == true ) 
+	// Only if we already don't have this weapon
+	if ( !bOwnsWeaponAlready ) 
 	{
-		//If we have room for the ammo, then "take" the weapon too.
-		 if ( Weapon_EquipAmmoOnly( pWeapon ) )
-		 {
-			 pWeapon->CheckRespawn();
-
-			 UTIL_Remove( pWeapon );
-			 return true;
-		 }
-		 else
-		 {
-			 return false;
-		 }
+		pWeapon->CheckRespawn();
+		Weapon_Equip(pWeapon);
 	}
-
-	pWeapon->CheckRespawn();
-	Weapon_Equip( pWeapon );
 
 	return true;
 }
