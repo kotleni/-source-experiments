@@ -20,8 +20,8 @@
 {
  "ControlName"  "Label"
  "fieldName"  "joinTeam"
- "xpos"  "20"
- "ypos"  "20"
+ "xpos"  "16"
+ "ypos"  "16"
  "wide"  "200"
  "tall"  "30"
  "autoResize"  "0"
