@@ -28,6 +28,8 @@ int ScreenTransform( const Vector& point, Vector& screen );
 
 #define	HEALTH_WARNING_THRESHOLD	25
 
+// #define QUICK_INFO_ENABLE
+
 static ConVar	hud_quickinfo( "hud_quickinfo", "1", FCVAR_ARCHIVE );
 
 extern ConVar crosshair;
@@ -192,6 +194,7 @@ bool CHUDQuickInfo::ShouldDraw( void )
 //-----------------------------------------------------------------------------
 void CHUDQuickInfo::OnThink()
 {
+#ifdef QUICK_INFO_ENABLE
 	BaseClass::OnThink();
 
 	C_BasePlayer *player = C_BasePlayer::GetLocalPlayer();
@@ -235,10 +238,12 @@ void CHUDQuickInfo::OnThink()
 			g_pClientMode->GetViewportAnimationController()->RunAnimationCommand( this, "Alpha", QUICKINFO_BRIGHTNESS_FULL, 0.0f, QUICKINFO_FADE_IN_TIME, vgui::AnimationController::INTERPOLATOR_LINEAR );
 		}
 	}
+#endif
 }
 
 void CHUDQuickInfo::Paint()
 {
+#ifdef QUICK_INFO_ENABLE
 	C_BasePlayer *player = C_BasePlayer::GetLocalPlayer();
 	if ( player == NULL )
 		return;
@@ -384,6 +389,7 @@ void CHUDQuickInfo::Paint()
 		
 		gHUD.DrawIconProgressBar( xCenter + m_icon_rb->Width(), yCenter, m_icon_rb, m_icon_rbe, ammoPerc, ammoColor, CHud::HUDPB_VERTICAL );
 	}
+#endif
 }
 
 //-----------------------------------------------------------------------------
