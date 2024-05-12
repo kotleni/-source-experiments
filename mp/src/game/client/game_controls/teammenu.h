@@ -74,8 +74,8 @@ protected:
 	void OnCommand(const char* command);
 
 	IViewPort	*m_pViewPort;
-	vgui::RichText *m_pMapInfo;
-	vgui::HTML *m_pMapInfoHTML;
+	//vgui::RichText *m_pMapInfo;
+	//vgui::HTML *m_pMapInfoHTML;
 //	int m_iNumTeams;
 	ButtonCode_t m_iJumpKey;
 	ButtonCode_t m_iScoreBoardKey;
