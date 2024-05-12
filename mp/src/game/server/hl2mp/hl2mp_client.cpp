@@ -74,6 +74,7 @@ void FinishClientPutInServer( CHL2MP_Player *pPlayer )
 
 	// kotleni: MOTD disabled
 	// put here opening chose a team menu
+	pPlayer->ShowViewPortPanel( PANEL_TEAM, true, data );
 	// pPlayer->ShowViewPortPanel( PANEL_INFO, true, data );
 
 	data->deleteThis();
