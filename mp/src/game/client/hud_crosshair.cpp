@@ -29,8 +29,15 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-ConVar crosshair( "crosshair", "1", FCVAR_ARCHIVE );
+ConVar crosshair("crosshair", "1", FCVAR_ARCHIVE);
 ConVar cl_observercrosshair( "cl_observercrosshair", "1", FCVAR_ARCHIVE );
+
+ConVar crosshair_thickness("crosshair_thickness", "0.5", FCVAR_CLIENTDLL);
+ConVar crosshair_size("crosshair_size", "12", FCVAR_CLIENTDLL);
+
+ConVar crosshair_red("cl_crosshair_red", "220", FCVAR_CLIENTDLL);
+ConVar crosshair_green("cl_crosshair_green", "220", FCVAR_CLIENTDLL);
+ConVar crosshair_blue("cl_crosshair_blue", "220", FCVAR_CLIENTDLL);
 
 using namespace vgui;
 
@@ -249,35 +256,16 @@ void CHudCrosshair::Paint( void )
 	if( bBehindCamera )
 		return;
 
-	float flWeaponScale = 1.f;
-	int iTextureW = m_pCrosshair->Width();
-	int iTextureH = m_pCrosshair->Height();
-	C_BaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
-	if ( pWeapon )
-	{
-		pWeapon->GetWeaponCrosshairScale( flWeaponScale );
-	}
-
-	float flPlayerScale = 1.0f;
-#ifdef TF_CLIENT_DLL
-	Color clr( cl_crosshair_red.GetInt(), cl_crosshair_green.GetInt(), cl_crosshair_blue.GetInt(), 255 );
-	flPlayerScale = cl_crosshair_scale.GetFloat() / 32.0f;  // the player can change the scale in the options/multiplayer tab
-#else
-	Color clr = m_clrCrosshair;
-#endif
-	float flWidth = flWeaponScale * flPlayerScale * (float)iTextureW;
-	float flHeight = flWeaponScale * flPlayerScale * (float)iTextureH;
-	int iWidth = (int)( flWidth + 0.5f );
-	int iHeight = (int)( flHeight + 0.5f );
 	int iX = (int)( x + 0.5f );
 	int iY = (int)( y + 0.5f );
 
-	m_pCrosshair->DrawSelfCropped (
-		iX-(iWidth/2), iY-(iHeight/2),
-		0, 0,
-		iTextureW, iTextureH,
-		iWidth, iHeight,
-		clr );
+	float size = crosshair_size.GetFloat();
+	float thickness = crosshair_thickness.GetFloat();
+	Color clr(crosshair_red.GetInt(), crosshair_green.GetInt(), crosshair_blue.GetInt(), 255);
+
+	surface()->DrawSetColor(clr);
+	surface()->DrawFilledRect(iX - (size / 2), iY - (thickness / 2), iX + (size / 2), iY + (thickness / 2));
+	surface()->DrawFilledRect(iX - (thickness / 2), iY - (size / 2), iX + (thickness / 2), iY + (size / 2));
 }
 
 //-----------------------------------------------------------------------------
@@ -293,6 +281,7 @@ void CHudCrosshair::SetCrosshairAngle( const QAngle& angle )
 //-----------------------------------------------------------------------------
 void CHudCrosshair::SetCrosshair( CHudTexture *texture, const Color& clr )
 {
+	// TODO(kotleni): remove texture and color related stuff
 	m_pCrosshair = texture;
 	m_clrCrosshair = clr;
 }
