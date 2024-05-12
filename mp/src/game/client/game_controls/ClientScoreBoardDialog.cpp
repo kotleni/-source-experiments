@@ -274,11 +274,17 @@ void CClientScoreBoardDialog::Update( void )
 	
 	FillScoreBoard();
 
+	int wx, wy, ww, wt;
+	surface()->GetWorkspaceBounds(wx, wy, ww, wt);
+
 	// grow the scoreboard to fit all the players
+	int padding = 16;
 	int wide, tall;
 	m_pPlayerList->GetContentSize(wide, tall);
-	tall += GetAdditionalHeight();
-	wide = GetWide();
+
+	tall = wt - (padding * 2); //+= GetAdditionalHeight();
+	wide = ww - (padding * 2); //GetWide();
+
 	if (m_iDesiredHeight < tall)
 	{
 		SetSize(wide, tall);
