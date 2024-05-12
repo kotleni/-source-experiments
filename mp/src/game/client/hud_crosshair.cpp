@@ -35,9 +35,9 @@ ConVar cl_observercrosshair( "cl_observercrosshair", "1", FCVAR_ARCHIVE );
 ConVar crosshair_thickness("crosshair_thickness", "0.5", FCVAR_CLIENTDLL);
 ConVar crosshair_size("crosshair_size", "12", FCVAR_CLIENTDLL);
 
-ConVar crosshair_red("cl_crosshair_red", "220", FCVAR_CLIENTDLL);
-ConVar crosshair_green("cl_crosshair_green", "220", FCVAR_CLIENTDLL);
-ConVar crosshair_blue("cl_crosshair_blue", "220", FCVAR_CLIENTDLL);
+ConVar crosshair_red("crosshair_red", "220", FCVAR_CLIENTDLL);
+ConVar crosshair_green("crosshair_green", "220", FCVAR_CLIENTDLL);
+ConVar crosshair_blue("crosshair_blue", "220", FCVAR_CLIENTDLL);
 
 using namespace vgui;
 
