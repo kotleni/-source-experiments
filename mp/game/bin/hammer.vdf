@@ -14,15 +14,15 @@
 						{
 							"AssetBrowser"
 							{
-								"lastBarWidth"		"289"
+								"lastBarWidth"		"292"
 								"0_hidden"		"0"
 								"0_width"		"52"
 								"1_hidden"		"0"
-								"1_width"		"238"
+								"1_width"		"241"
 							}
 						}
-						"0_splitter_pos"		"240.000000"
-						"1_splitter_pos"		"480.000000"
+						"0_splitter_pos"		"216.500000"
+						"1_splitter_pos"		"433.000000"
 					}
 				}
 				"child1"
@@ -73,13 +73,14 @@
 								}
 							}
 						}
-						"0_splitter_pos"		"240.000000"
-						"1_splitter_pos"		"480.000000"
+						"0_splitter_pos"		"216.500000"
+						"1_splitter_pos"		"433.000000"
 					}
 				}
-				"0_splitter_pos"		"320.000000"
-				"1_splitter_pos"		"640.000000"
+				"0_splitter_pos"		"322.500000"
+				"1_splitter_pos"		"645.000000"
 			}
+			"FolderFilter"		"props_junk\\"
 		}
 	}
 }
