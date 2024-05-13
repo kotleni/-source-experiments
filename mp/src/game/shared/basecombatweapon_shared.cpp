@@ -429,7 +429,7 @@ int CBaseCombatWeapon::GetWeight( void ) const
 //-----------------------------------------------------------------------------
 bool CBaseCombatWeapon::AllowsAutoSwitchTo( void ) const
 {
-	return GetWpnData().bAutoSwitchTo;
+	return false; // kotleni: disabled GetWpnData().bAutoSwitchTo;
 }
 
 //-----------------------------------------------------------------------------
@@ -606,7 +606,7 @@ bool CBaseCombatWeapon::CanBeSelected( void )
 	if ( !VisibleInWeaponSelection() )
 		return false;
 
-	return HasAmmo();
+	return true; // kotleni: removed, not needed HasAmmo()
 }
 
 //-----------------------------------------------------------------------------
@@ -1362,18 +1362,19 @@ bool CBaseCombatWeapon::ReloadOrSwitchWeapons( void )
 	m_bFireOnEmpty = false;
 
 	// If we don't have any ammo, switch to the next best weapon
-	if ( !HasAnyAmmo() && m_flNextPrimaryAttack < gpGlobals->curtime && m_flNextSecondaryAttack < gpGlobals->curtime )
-	{
-		// weapon isn't useable, switch.
-		if ( ( (GetWeaponFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY) == false ) && ( g_pGameRules->SwitchToNextBestWeapon( pOwner, this ) ) )
-		{
-			m_flNextPrimaryAttack = gpGlobals->curtime + 0.3;
-			return true;
-		}
-	}
-	else
-	{
-		// Weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
+	//if ( !HasAnyAmmo() && m_flNextPrimaryAttack < gpGlobals->curtime && m_flNextSecondaryAttack < gpGlobals->curtime )
+	//{
+	//	// weapon isn't useable, switch.
+	//	if ( ( (GetWeaponFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY) == false ) && ( g_pGameRules->SwitchToNextBestWeapon( pOwner, this ) ) )
+	//	{
+	//		m_flNextPrimaryAttack = gpGlobals->curtime + 0.3;
+	//		return true;
+	//	}
+	//}
+	//else
+	//{
+		
+	// Weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
 		if ( UsesClipsForAmmo1() && !AutoFiresFullClip() && 
 			 (m_iClip1 == 0) && 
 			 (GetWeaponFlags() & ITEM_FLAG_NOAUTORELOAD) == false && 
@@ -1384,7 +1385,7 @@ bool CBaseCombatWeapon::ReloadOrSwitchWeapons( void )
 			if ( Reload() )
 				return true;
 		}
-	}
+	//}
 
 	return false;
 }
@@ -1403,8 +1404,8 @@ bool CBaseCombatWeapon::DefaultDeploy( char *szViewModel, char *szWeaponModel, i
 
 	// Weapons that don't autoswitch away when they run out of ammo 
 	// can still be deployed when they have no ammo.
-	if ( !HasAnyAmmo() && AllowsAutoSwitchFrom() )
-		return false;
+	/*if ( !HasAnyAmmo() && AllowsAutoSwitchFrom() )
+		return false;*/
 
 	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
 	if ( pOwner )

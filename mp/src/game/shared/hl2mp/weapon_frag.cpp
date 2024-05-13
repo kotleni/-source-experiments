@@ -283,10 +283,10 @@ void CWeaponFrag::SecondaryAttack( void )
 	m_flNextSecondaryAttack	= FLT_MAX;
 
 	// If I'm now out of ammo, switch away
-	if ( !HasPrimaryAmmo() )
+	/*if ( !HasPrimaryAmmo() )
 	{
 		pPlayer->SwitchToNextBestWeapon( this );
-	}
+	}*/
 }
 
 //-----------------------------------------------------------------------------
@@ -319,10 +319,10 @@ void CWeaponFrag::PrimaryAttack( void )
 	m_flNextPrimaryAttack = FLT_MAX;
 
 	// If I'm now out of ammo, switch away
-	if ( !HasPrimaryAmmo() )
+	/*if ( !HasPrimaryAmmo() )
 	{
 		pPlayer->SwitchToNextBestWeapon( this );
-	}
+	}*/
 }
 
 //-----------------------------------------------------------------------------
