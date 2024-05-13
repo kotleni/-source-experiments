@@ -7,8 +7,8 @@ WeaponData
 	"viewmodel"			"models/weapons/v_irifle.mdl"
 	"playermodel"			"models/weapons/w_irifle.mdl"
 	"anim_prefix"			"ar2"
-	"bucket"			"2"
-	"bucket_position"		"1"
+	"bucket"				"3"
+	"bucket_position"		"0"
 
 	"clip_size"			"30"
 	"default_clip"			"60"
