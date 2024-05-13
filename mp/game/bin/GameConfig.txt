@@ -1,0 +1,76 @@
+"Configs"
+{
+	"Games"
+	{
+		"Half-Life 2: Deathmatch"
+		{
+			"GameDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\hl2mp"
+			"Hammer"
+			{
+				"GameData0"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\hl2mp.fgd"
+				"TextureFormat"		"5"
+				"MapFormat"		"4"
+				"DefaultTextureScale"		"0.250000"
+				"DefaultLightmapScale"		"16"
+				"GameExe"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\hl2.exe"
+				"DefaultSolidEntity"		"func_detail"
+				"DefaultPointEntity"		"info_player_deathmatch"
+				"BSP"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vbsp.exe"
+				"Vis"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vvis.exe"
+				"Light"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vrad.exe"
+				"GameExeDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game"
+				"MapDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\sourcesdk_content\hl2mp\mapsrc"
+				"BSPDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\hl2mp\maps"
+				"CordonTexture"		"tools\toolsskybox"
+				"MaterialExcludeCount"		"0"
+			}
+		}
+		"Half-Life 2"
+		{
+			"GameDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\hl2"
+			"Hammer"
+			{
+				"GameData0"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\halflife2.fgd"
+				"TextureFormat"		"5"
+				"MapFormat"		"4"
+				"DefaultTextureScale"		"0.250000"
+				"DefaultLightmapScale"		"16"
+				"GameExe"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\hl2.exe"
+				"DefaultSolidEntity"		"func_detail"
+				"DefaultPointEntity"		"info_player_start"
+				"BSP"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vbsp.exe"
+				"Vis"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vvis.exe"
+				"Light"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vrad.exe"
+				"GameExeDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game"
+				"MapDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\sourcesdk_content\hl2\mapsrc"
+				"BSPDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\hl2\maps"
+				"CordonTexture"		"tools\toolsskybox"
+				"MaterialExcludeCount"		"0"
+			}
+		}
+		"CustomGame"
+		{
+			"GameDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\mod_hl2mp"
+			"Hammer"
+			{
+				"GameData0"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\customgame.fgd"
+				"TextureFormat"		"5"
+				"MapFormat"		"4"
+				"DefaultTextureScale"		"0.250000"
+				"DefaultLightmapScale"		"16"
+				"GameExe"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\hl2.exe"
+				"DefaultSolidEntity"		"color_correction_volume"
+				"DefaultPointEntity"		"ai_ally_manager"
+				"BSP"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vbsp.exe"
+				"Vis"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vvis.exe"
+				"Light"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\bin\vrad.exe"
+				"GameExeDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game"
+				"MapDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\mod_hl2mp\maps"
+				"BSPDir"		"C:\Users\yavar\Downloads\source-sdk-vs2022-master\mp\game\mod_hl2mp\maps"
+				"CordonTexture"		"BLACK"
+				"MaterialExcludeCount"		"0"
+			}
+		}
+	}
+	"SDKVersion"		"5"
+}
