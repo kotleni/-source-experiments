@@ -260,6 +260,11 @@ void CHudCrosshair::Paint( void )
 	int iY = (int)( y + 0.5f );
 
 	float size = crosshair_size.GetFloat();
+
+	// crosshair can't get a two pixels at center
+	if (fmod(size, 2) == 0)
+		size += 1;
+
 	float thickness = crosshair_thickness.GetFloat();
 	Color clr(crosshair_red.GetInt(), crosshair_green.GetInt(), crosshair_blue.GetInt(), 255);
 
