@@ -1865,6 +1865,10 @@ void CTempEnts::MuzzleFlash( const Vector& pos1, const QAngle& angles, int type,
 			MuzzleFlash_Combine_NPC( hEntity, 1 );
 		}
 		break;
+
+	case MUZZLEFLASH_RPG:
+		MuzzleFlash_RPG_NPC(hEntity, 1);
+		break;
 	
 	default:
 		// There's no supported muzzle flash for the type specified!
